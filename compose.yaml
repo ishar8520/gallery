@@ -1,0 +1,24 @@
+services:
+  nginx:
+    container_name: gallery-nginx
+    build: 
+      context: './services/nginx'
+    networks:
+      - gallery-network
+    ports:
+      - '8000:8080'
+    volumes:
+      - 'nginx_logs_data:/opt/bitnami/nginx/logs' 
+
+  gallery-service:
+    container_name: gallery-service
+    build:
+      context: ./services/gallery
+    networks:
+      - gallery-network
+
+networks:
+  gallery-network:
+
+volumes:
+  nginx_logs_data:

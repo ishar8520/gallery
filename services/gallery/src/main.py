@@ -1,0 +1,15 @@
+from fastapi import FastAPI
+
+from src.api.v1.endpoints import gallery
+
+app = FastAPI(
+    title='Gallery service',
+    description='Service of photo gallery',
+    docs_url='/api/openapi',
+    openapi_url='/api/openapi.json',
+)
+
+app.include_router(
+    router=gallery.router,
+    tags=['MAin']
+)
