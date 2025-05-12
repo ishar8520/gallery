@@ -8,6 +8,8 @@ class ProjectConfig(BaseSettings):
 class MinioConfig(BaseSettings):
     model_config =  SettingsConfigDict(env_prefix='minio_')
     
+    host: str
+    port: int    
     user: str
     password: str
     

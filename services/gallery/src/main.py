@@ -11,5 +11,5 @@ app = FastAPI(
 
 app.include_router(
     router=gallery.router,
-    tags=['MAin']
+    tags=['Main']
 )

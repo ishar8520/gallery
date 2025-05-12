@@ -2,6 +2,8 @@ ARG PYTHON_VERSION=3.12
 
 FROM python:${PYTHON_VERSION}-slim AS poetry_builder
 
+ENV PYTHONBUFFERED=1
+
 RUN pip install --no-cache-dir poetry==1.7.1
 WORKDIR /app
 COPY pyproject.toml poetry.lock ./

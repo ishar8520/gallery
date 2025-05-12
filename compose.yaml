@@ -17,18 +17,30 @@ services:
     networks:
       - gallery-network
     environment:
+      - PROJECT_TITLE=gallery
+      - MINIO_HOST=minio
+      - MINIO_PORT=9000
       - MINIO_USER=$MINIO_USER
       - MINIO_PASSWORD=$MINIO_PASSWORD
 
   minio:
     container_name: gallery-minio
-    image : bitnami/minio:latest
+    build:
+      context: './services/minio'
+    networks:
+      - gallery-network
     environment:
-      - MINIO_USER=$MINIO_USER
-      - MINIO_PASSWORD=$MINIO_PASSWORD
+      - MINIO_ROOT_USER=$MINIO_USER
+      - MINIO_ROOT_PASSWORD=$MINIO_PASSWORD
+    volumes:
+      - 'minio_data:/data'
+    ports:
+      - '9000:9000'
+      - '9001:9001'
 
 networks:
   gallery-network:
 
 volumes:
   nginx_logs_data:
+  minio_data:
