@@ -14,9 +14,8 @@ router = APIRouter()
 
 @router.get(
     '/upload_photo',
-    response_model=ResponsePhotoUpload
 )
-async def upload_photo(request: RequestPhotoUpload) -> ResponsePhotoUpload:
+async def upload_photo():
     return {'upload_photo': 'success'}
 
 

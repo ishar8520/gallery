@@ -6,7 +6,7 @@ class RequestPhotoDownload(BaseModel):
     file_path: str = '/home/v/Pictures/Screenshots/123.jpeg'
 
 class RequestPhotoUpload(BaseModel):
-    pass
+    title: str
 
 class ResponsePhotoDownload(BaseModel):
     status: str

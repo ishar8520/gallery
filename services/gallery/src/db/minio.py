@@ -14,7 +14,6 @@ class MinioClient:
             secure=False
         )
 
-
     async def check_bucket(self, bucket_name: str):
         """Check and create a bucket"""
         print(f'BUCKET_NAME:{bucket_name}')

@@ -6,7 +6,7 @@ app = FastAPI(
     title='Gallery service',
     description='Service of photo gallery',
     docs_url='/api/openapi',
-    openapi_url='/api/openapi.json',
+    openapi_url='/api/openapi.json'
 )
 
 app.include_router(
