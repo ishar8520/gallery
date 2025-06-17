@@ -9,6 +9,10 @@ app = FastAPI(
     openapi_url='/api/openapi.json'
 )
 
+@app.get(f'/api/v1/_healthcheck')
+async def healthcheck():
+    return {}
+
 app.include_router(
     router=gallery.router,
     tags=['Main']

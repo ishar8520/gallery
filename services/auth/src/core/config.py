@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class PostgresConfig(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix='postgresql_')
+    model_config = SettingsConfigDict(env_prefix='auth_postgresql_')
 
     username: str
     password: str
@@ -11,7 +11,7 @@ class PostgresConfig(BaseSettings):
 
     @property
     def url(self):
-        return f'postgresl+asyncpg://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}'
+        return f'postgresql+asyncpg://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}'
     
 
 class Settings(BaseSettings):

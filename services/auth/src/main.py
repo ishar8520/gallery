@@ -4,8 +4,14 @@ from src.api.v1.endpoints import auth
 from src.services.init import init_db
 
 
+from contextlib import asynccontextmanager
+
+
+@asynccontextmanager
 async def lifespan(_app: FastAPI):
     await init_db()
+    yield
+
 
 base_url_prefix = '/auth'
 

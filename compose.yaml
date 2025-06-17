@@ -1,6 +1,6 @@
 services:
   nginx:
-    container_name: gallery-nginx
+    container_name: nginx
     build: 
       context: './services/nginx'
     networks:
@@ -8,7 +8,12 @@ services:
     ports:
       - '8000:8080'
     volumes:
-      - 'nginx_logs_data:/opt/bitnami/nginx/logs' 
+      - 'nginx_logs_data:/opt/bitnami/nginx/logs'
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      gallery-service:
+        condition: service_healthy
 
   auth-service:
     container_name: auth-service
@@ -22,14 +27,18 @@ services:
       - AUTH_POSTGRESQL_DATABASE=$AUTH_POSTGRESQL_DATABASE
       - AUTH_POSTGRESQL_HOST=auth-postgres
       - AUTH_POSTGRESQL_PORt=5432
+    depends_on:
+      auth-postgres:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl http://localhost:8000/auth/api/v1/_healthcheck"]
+      test: ["CMD-SHELL", "curl -s http://localhost:8000/auth/api/v1/_healthcheck"]
       interval: 10s
       timeout: 10s
       retries: 5
       start_period: 10s
 
   auth-postgres:
+    container_name: auth-postgres
     image: bitnami/postgresql:17
     networks:
       - gallery-network
@@ -38,7 +47,7 @@ services:
       - POSTGRESQL_PASSWORD=$AUTH_POSTGRESQL_PASSWORD
       - POSTGRESQL_DATABASE=$AUTH_POSTGRESQL_DATABASE
     healthcheck:
-      test: ["CMD", "pg_isready --username=$AUTH_POSTGRESQL_USERNAME --dbname=$AUTH_POSTGRESQL_DATABASE"]
+      test: ["CMD-SHELL", "pg_isready --username=$AUTH_POSTGRESQL_USERNAME --dbname=$AUTH_POSTGRESQL_DATABASE"]
       interval: 10s
       timeout: 10s
       retries: 5
@@ -56,6 +65,12 @@ services:
       - MINIO_PORT=9000
       - MINIO_USER=$MINIO_USER
       - MINIO_PASSWORD=$MINIO_PASSWORD
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:8000/api/v1/_healthcheck"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
 
   minio:
     container_name: gallery-minio
