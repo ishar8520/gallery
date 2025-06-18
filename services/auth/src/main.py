@@ -1,16 +1,16 @@
 from fastapi import FastAPI
 
 from src.api.v1.endpoints import auth
-from src.services.init import init_db
+# from src.services.init import init_db
 
 
-from contextlib import asynccontextmanager
+# from contextlib import asynccontextmanager
 
 
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    await init_db()
-    yield
+# @asynccontextmanager
+# async def lifespan(_app: FastAPI):
+#     await init_db()
+#     yield
 
 
 base_url_prefix = '/auth'
@@ -20,7 +20,7 @@ app = FastAPI(
     description='Service for user authorization',
     docs_url=f'{base_url_prefix}/api/openapi',
     openapi_url=f'{base_url_prefix}/api/openapi.json',
-    lifespan=lifespan
+    # lifespan=lifespan
 )
 
 base_url_prefix_api = f'{base_url_prefix}/api/v1'
