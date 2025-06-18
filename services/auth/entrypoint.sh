@@ -2,6 +2,8 @@
 
 set -e
 
-exec "$@"
-
 alembic upgrade head
+
+export PYTHONPATH=/opt/app:$PYTHONPATH
+
+exec "$@"
