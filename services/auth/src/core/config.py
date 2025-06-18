@@ -21,6 +21,10 @@ class RedisConfig(BaseSettings):
     host: str
     port: int
 
+    @property
+    def url(self):
+        return f'redis://{self.host}:{self.port}/0'
+
 
 class Settings(BaseSettings):
     postgres: PostgresConfig = PostgresConfig()
