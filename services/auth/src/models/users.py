@@ -22,12 +22,12 @@ auth_metadata_obj = MetaData(
 class Base(DeclarativeBase):
     metadata = auth_metadata_obj
 
-class Users(Base):
+class User(Base):
     __tablename__ = 'users'
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, unique=True)
-    username: Mapped[str] = mapped_column(String)
+    id: Mapped[uuid.UUID] = mapped_column(UUID, primary_key=True, unique=True, default=uuid.uuid4)
+    username: Mapped[str] = mapped_column(String, unique=True)
     password: Mapped[str] = mapped_column(String)
-    email: Mapped[str] = mapped_column(String)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc))
-    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))
+    email: Mapped[str] = mapped_column(String, unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc))

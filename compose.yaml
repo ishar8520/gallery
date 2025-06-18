@@ -32,7 +32,7 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:8000/auth/api/v1/_healthcheck"]
-      interval: 10s
+      interval: 30s
       timeout: 10s
       retries: 5
       start_period: 10s
@@ -42,6 +42,8 @@ services:
     image: bitnami/postgresql:17
     networks:
       - gallery-network
+    ports:
+      - '5432:5432'
     environment:
       - POSTGRESQL_USERNAME=$AUTH_POSTGRESQL_USERNAME
       - POSTGRESQL_PASSWORD=$AUTH_POSTGRESQL_PASSWORD
@@ -67,7 +69,7 @@ services:
       - MINIO_PASSWORD=$MINIO_PASSWORD
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:8000/api/v1/_healthcheck"]
-      interval: 10s
+      interval: 30s
       timeout: 10s
       retries: 5
       start_period: 10s

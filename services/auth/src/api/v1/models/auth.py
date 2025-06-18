@@ -8,4 +8,4 @@ class ReqRegistration(BaseModel):
     password: str
 
 class ResRegistration(BaseModel):
-    token: uuid.UUID
+    id: uuid.UUID
