@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from http import HTTPStatus
 
 from src.api.v1.models.auth import ReqRegistration, ResRegistration
 from src.dependences.httpx import get_httpx_client, httpx
-from src.services.auth import get_auth_service, AuthService, AuthException
+from src.services.auth import get_auth_service, AuthService
+from src.services.exceptions import BadEmailException, EmailExistException, UsernameExistException
 
 router = APIRouter()
 
@@ -17,6 +18,19 @@ async def register_user(
     service: AuthService = Depends(get_auth_service)
 
 ):
-    created_user = await service.get_register(request_model)
-    return ResRegistration(id=created_user.id)
+    try:
+        created_user = await service.get_register(request_model)
+    except BadEmailException:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='Wrong email')
+    except EmailExistException:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='User with this email already exists')
+    except UsernameExistException:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail='User with this username already exists')
     
+    return ResRegistration(id=created_user.id)

@@ -8,7 +8,7 @@ services:
     ports:
       - '8000:8080'
     volumes:
-      - 'nginx_logs_data:/opt/bitnami/nginx/logs'
+      - 'nginx-logs-data:/opt/bitnami/nginx/logs'
     depends_on:
       auth-service:
         condition: service_healthy
@@ -22,11 +22,13 @@ services:
     networks:
       - gallery-network
     environment:
-      - AUTH_POSTGRESQL_USERNAME=$AUTH_POSTGRESQL_USERNAME
-      - AUTH_POSTGRESQL_PASSWORD=$AUTH_POSTGRESQL_PASSWORD
-      - AUTH_POSTGRESQL_DATABASE=$AUTH_POSTGRESQL_DATABASE
-      - AUTH_POSTGRESQL_HOST=auth-postgres
-      - AUTH_POSTGRESQL_PORt=5432
+      - POSTGRESQL_USERNAME=$AUTH_POSTGRESQL_USERNAME
+      - POSTGRESQL_PASSWORD=$AUTH_POSTGRESQL_PASSWORD
+      - POSTGRESQL_DATABASE=$AUTH_POSTGRESQL_DATABASE
+      - POSTGRESQL_HOST=auth-postgres
+      - POSTGRESQL_PORt=5432
+      - REDIS_HOST=auth-redis
+      - REDIS_PORT=6379
     depends_on:
       auth-postgres:
         condition: service_healthy
@@ -42,6 +44,8 @@ services:
     image: bitnami/postgresql:17
     networks:
       - gallery-network
+    volumes:
+      - 'auth-postgres-data:/bitnami/postgresql'
     ports:
       - '5432:5432'
     environment:
@@ -55,6 +59,23 @@ services:
       retries: 5
       start_period: 30s
 
+  auth-redis:
+    container_name: auth-redis
+    image: bitnami/redis:8.0
+    networks:
+      - gallery-network
+    volumes:
+      - 'auth-redis-data:/bitnami/redis/data'
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    command: [ '/opt/bitnami/scripts/redis/run.sh', '--maxmemory', '${REDIS_MAXMEMORY:-200mb}' ]
+    healthcheck:
+      test: ["CMD", "/bin/bash", "-c", "[[ $(redis-cli ping) == 'PONG' ]] " ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    
   gallery-service:
     container_name: gallery-service
     build:
@@ -84,7 +105,7 @@ services:
       - MINIO_ROOT_USER=$MINIO_USER
       - MINIO_ROOT_PASSWORD=$MINIO_PASSWORD
     volumes:
-      - 'minio_data:/data'
+      - 'minio-data:/data'
     ports:
       - '9000:9000'
       - '9001:9001'
@@ -93,5 +114,7 @@ networks:
   gallery-network:
 
 volumes:
-  nginx_logs_data:
-  minio_data:
+  nginx-logs-data:
+  minio-data:
+  auth-postgres-data:
+  auth-redis-data:

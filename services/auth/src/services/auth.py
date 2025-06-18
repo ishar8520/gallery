@@ -1,16 +1,17 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy import select, Select
-from fastapi import Depends, HTTPException
-from http import HTTPStatus
+from fastapi import Depends
+from hashlib import sha256
 
 from src.dependences.postgres import get_async_session
 from src.api.v1.models.auth import ReqRegistration
 from src.models.users import User
+from src.services.exceptions import (
+    EmailExistException,
+    UsernameExistException
+) 
 
-
-class AuthException(Exception):
-    pass
 
 class AuthService:
     _pg_session: AsyncSession
@@ -22,21 +23,19 @@ class AuthService:
         try:
             username = await self.get_one_or_none(select(User).where(User.username==request_model.username))
             if username:
-                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='User with this username already exists')
+                raise UsernameExistException
             email = await self.get_one_or_none(select(User).where(User.email==request_model.email))
             if email:
-                raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='User with this email already exists')
-            
+                raise EmailExistException
+            password = sha256(request_model.password.encode('utf-8')).hexdigest()
             user = User(username=request_model.username,
-                        password=request_model.password,
+                        password=password,
                         email=request_model.email)
             self._pg_session.add(user)
             await self._pg_session.commit()
             await self._pg_session.refresh(user)
-        except SQLAlchemyError as error:
-            print(error)
+        except SQLAlchemyError:
             await self._pg_session.rollback()
-            raise HTTPException(status_code=HTTPStatus.BAD_REQUEST, detail='SQL Exception')
         return user
 
     async def get_one_or_none(self, statement: Select):
