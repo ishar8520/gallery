@@ -26,9 +26,20 @@ class RedisConfig(BaseSettings):
         return f'redis://{self.host}:{self.port}/0'
 
 
+class JWTConfig(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix='jwt_')
+    
+    secret: str
+    
+    @property
+    def secret(self):
+        return self.secret
+
+
 class Settings(BaseSettings):
     postgres: PostgresConfig = PostgresConfig()
     redis: RedisConfig = RedisConfig()
+    authjwt_secret_key: str = JWTConfig().secret
 
 
 settings = Settings()

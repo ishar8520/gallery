@@ -1,11 +1,23 @@
 from pydantic import BaseModel
 import uuid
 
+class AccessToken(BaseModel):
+    access_token: str
+    
+class RefreshToken(BaseModel):
+    refresh_token: str
 
-class ReqRegistration(BaseModel):
+class UserData(BaseModel):
     username: str
     email: str
-    password: str
+    password: str 
 
-class ResRegistration(BaseModel):
-    id: uuid.UUID
+class ReqRegistration(UserData):
+    pass
+
+class RespRegistration(AccessToken, RefreshToken):
+    pass
+
+
+
+

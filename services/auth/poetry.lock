@@ -55,6 +55,27 @@ test = ["anyio[trio]", "blockbuster (>=1.5.23)", "coverage[toml] (>=7)", "except
 trio = ["trio (>=0.26.1)"]
 
 [[package]]
+name = "async-fastapi-jwt-auth"
+version = "0.6.6"
+description = "Async fork of FastAPI extension that provides JWT Auth support (secure, easy to use and lightweight)"
+optional = false
+python-versions = ">=3.8"
+groups = ["main"]
+files = [
+    {file = "async_fastapi_jwt_auth-0.6.6-py3-none-any.whl", hash = "sha256:fd050738ecf473e043bc30cfcf74d1389e84b7b16bad4b6515673e6ce947f871"},
+    {file = "async_fastapi_jwt_auth-0.6.6.tar.gz", hash = "sha256:1b88f2f6d1bfc060b66a3dd73c0b34556bdcf538c9ab5b45618b3dc5b3b5644f"},
+]
+
+[package.dependencies]
+fastapi = ">=0.109.0"
+httpx = ">=0.23.3"
+pydantic-settings = ">=2.2.1"
+PyJWT = ">=2.8.0"
+
+[package.extras]
+asymmetric = ["cryptography (>=42.0.5)"]
+
+[[package]]
 name = "asyncpg"
 version = "0.30.0"
 description = "An asyncio PostgreSQL driver"
@@ -761,6 +782,24 @@ files = [
 windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
+name = "pyjwt"
+version = "2.10.1"
+description = "JSON Web Token implementation in Python"
+optional = false
+python-versions = ">=3.9"
+groups = ["main"]
+files = [
+    {file = "PyJWT-2.10.1-py3-none-any.whl", hash = "sha256:dcdd193e30abefd5debf142f9adfcdd2b58004e644f25406ffaebd50bd98dacb"},
+    {file = "pyjwt-2.10.1.tar.gz", hash = "sha256:3cc5772eb20009233caf06e9d8a0577824723b44e6648ee0a2aedb6cf9381953"},
+]
+
+[package.extras]
+crypto = ["cryptography (>=3.4.0)"]
+dev = ["coverage[toml] (==5.0.4)", "cryptography (>=3.4.0)", "pre-commit", "pytest (>=6.0.0,<7.0.0)", "sphinx", "sphinx-rtd-theme", "zope.interface"]
+docs = ["sphinx", "sphinx-rtd-theme", "zope.interface"]
+tests = ["coverage[toml] (==5.0.4)", "pytest (>=6.0.0,<7.0.0)"]
+
+[[package]]
 name = "python-dotenv"
 version = "1.1.0"
 description = "Read key-value pairs from a .env file and set them as environment variables"
@@ -1366,4 +1405,4 @@ files = [
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12"
-content-hash = "e69ebe102cb2efb0a31a5815e18b3176b164c7dcfda67dcce3dc6e9cfc402357"
+content-hash = "de66ea10e934f51263bf4117aef09853c2bb39695bc8acf9728044f680a46f6d"

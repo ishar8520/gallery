@@ -1,25 +1,25 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from async_fastapi_jwt_auth import AuthJWT
 from http import HTTPStatus
 
-from src.api.v1.models.auth import ReqRegistration, ResRegistration
-from src.dependences.httpx import get_httpx_client, httpx
+from src.api.v1.models.auth import ReqRegistration, RespRegistration
+# from src.dependences.httpx import get_httpx_client, httpx
 from src.services.auth import get_auth_service, AuthService
 from src.services.exceptions import BadEmailException, EmailExistException, UsernameExistException
 
 router = APIRouter()
 
 
-@router.post('/register',
+@router.post('/registration',
              status_code=HTTPStatus.CREATED,
-             response_model=ResRegistration)
+             response_model=RespRegistration)
 async def register_user(
     request_model: ReqRegistration,
-    httpx_client: httpx.AsyncClient = Depends(get_httpx_client),
+    # httpx_client: httpx.AsyncClient = Depends(get_httpx_client),
     service: AuthService = Depends(get_auth_service)
-
 ):
     try:
-        created_user = await service.get_register(request_model)
+        access_token, refresh_token = await service.get_register(request_model)
     except BadEmailException:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -32,5 +32,15 @@ async def register_user(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='User with this username already exists')
-    
-    return ResRegistration(id=created_user.id)
+    return RespRegistration(access_token=access_token,
+                            refresh_token=refresh_token)
+
+
+@router.post('/test',
+             status_code=HTTPStatus.CREATED,
+             response_model=dict)
+async def test(
+    service: AuthService = Depends(get_auth_service)
+):
+    token = await service.test()
+    return token
