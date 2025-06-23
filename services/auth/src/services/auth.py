@@ -60,6 +60,7 @@ class AuthService:
         return await self.jwt_session.logout()
 
     async def get_user(self):
+        await self.jwt_session.check_jwt()
         return await self.jwt_session.get_jwt_claim()      
 
         

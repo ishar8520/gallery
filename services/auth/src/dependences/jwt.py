@@ -19,6 +19,8 @@ class JWTDep:
     def __init__(self, request: Request, response: Response, redis_session: RedisDep):
         self.auth_jwt = AuthJWT(request, response)
         self.redis_session = redis_session
+        self.response = response
+        self.request = request
     
     async def create_access_token(self, user_id: str, username: str, email: str):
         token_data = {
