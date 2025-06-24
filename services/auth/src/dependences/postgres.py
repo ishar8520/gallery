@@ -15,9 +15,9 @@ async_session_maker = async_sessionmaker(bind=engine, class_=AsyncSession)
 class PostgresDep:
     session: AsyncSession
     
-    def __init__(self):
+    def __init__(self, session):
         try:
-            self.session = async_session_maker()
+            self.session = session
         except Exception:
             raise
         
@@ -43,13 +43,6 @@ class PostgresDep:
         return user
 
 
-async def get_async_pg() -> PostgresDep:
-    return PostgresDep()
-
-# async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
-#     async with async_session_maker() as session:
-#         try:
-#             yield session
-#         except Exception:
-#             await session.rollback()
-#             raise
+async def get_async_pg() -> AsyncGenerator[PostgresDep]:
+    async with async_session_maker() as session:
+        yield PostgresDep(session)

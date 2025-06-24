@@ -9,7 +9,6 @@ from typing import Tuple
 import hmac
 
 from src.dependences.postgres import get_async_pg, PostgresDep
-# from src.dependences.redis import get_async_redis, Redis
 from src.dependences.jwt import get_async_jwt, JWTDep
 from src.api.v1.models.auth import (
     ReqRegistration,
@@ -48,7 +47,10 @@ class AuthService:
         return user.id
 
     async def get_login(self, request_model: ReqLogin):
-        user = await self.pg_session.check_user(username=request_model.username, password=request_model.password)
+        user = await self.pg_session.check_user(
+            username=request_model.username,
+            password=request_model.password
+        )
         if not user:
             raise BadCredsException
         access_token = await self.jwt_session.create_access_token(user_id=user.id,
@@ -59,9 +61,9 @@ class AuthService:
     async def get_logout(self):
         return await self.jwt_session.logout()
 
-    async def get_user(self):
-        await self.jwt_session.check_jwt()
-        return await self.jwt_session.get_jwt_claim()      
+    async def get_user(self, token):
+        await self.jwt_session.check_jwt(token)
+        return await self.jwt_session.get_jwt_claim(token)      
 
         
     async def check(self):

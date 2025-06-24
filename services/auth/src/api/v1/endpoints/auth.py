@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from http import HTTPStatus
+from typing import Annotated
 
 from src.api.v1.models.auth import (
     ReqRegistration,
@@ -18,14 +20,16 @@ from src.services.exceptions import (
 )
 
 router = APIRouter()
-
+oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl='v1/login'
+)
 
 @router.post('/registration',
              status_code=status.HTTP_201_CREATED,
              response_model=RespRegistration)
 async def register_user(
     request_model: ReqRegistration,
-    service: AuthService = Depends(get_auth_service)
+    service: Annotated[AuthService, Depends(get_auth_service)]
 ):
     try:
         user_id = await service.get_register(request_model)
@@ -46,29 +50,34 @@ async def register_user(
 
 @router.post('/login',
             status_code=status.HTTP_200_OK,
-            response_model=RespLogin)
+            response_model=dict)
 async def login(
-    request_model: ReqLogin,
-    service: AuthService = Depends(get_auth_service)
+    # request_model: ReqLogin,
+    request_model: Annotated[OAuth2PasswordRequestForm, Depends()],
+    service: Annotated[AuthService, Depends(get_auth_service)]
 ):
     try:
         access_token = await service.get_login(request_model)
     except BadCredsException:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='Wrong username or password'
         )
-    return RespLogin(access_token=access_token)
+    # return RespLogin(access_token=access_token)
+    return {'access_token': access_token}
 
 
 @router.post('/logout',
              status_code=status.HTTP_200_OK,
              response_model=dict)
 async def logout(
-    service: AuthService = Depends(get_auth_service)
+    token: Annotated[str, Depends(oauth2_scheme)],
+    service: Annotated[AuthService, Depends(get_auth_service)]
 ):
     try:
-        await service.get_logout()
+        await service.get_logout(token)
     except Exception:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized')
     return {'logout': 'ok'}
@@ -77,9 +86,12 @@ async def logout(
 @router.get('/user',
             status_code=status.HTTP_200_OK,
             response_model=dict)
-async def user(service: AuthService = Depends(get_auth_service)):
+async def user(
+    service: Annotated[AuthService, Depends(get_auth_service)],
+    token: Annotated[str, Depends(oauth2_scheme)]
+):
     try:
-        user_data = await service.get_user()
+        user_data = await service.get_user(token)
     except UnauthorizedException:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized')
     return user_data
@@ -89,7 +101,7 @@ async def user(service: AuthService = Depends(get_auth_service)):
             status_code=status.HTTP_200_OK,
             response_model=dict)
 async def check(
-    service: AuthService = Depends(get_auth_service)
+    service: Annotated[AuthService, Depends(get_auth_service)]
 ):
     try:
         token = await service.check()
@@ -102,7 +114,7 @@ async def check(
              status_code=status.HTTP_201_CREATED,
              response_model=dict)
 async def test(
-    service: AuthService = Depends(get_auth_service)
+    service: Annotated[AuthService, Depends(get_auth_service)]
 ):
     token = await service.test()
     return token
