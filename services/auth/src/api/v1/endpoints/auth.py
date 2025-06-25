@@ -1,85 +1,64 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from http import HTTPStatus
 from typing import Annotated
+from fastapi import APIRouter, Depends, HTTPException, status
+from async_fastapi_jwt_auth import AuthJWT
+from async_fastapi_jwt_auth.auth_jwt import AuthJWTBearer
+# from async_fastapi_jwt_auth.exceptions import (
+#     AuthJWTException,
+#     JWTDecodeError,
+#     MissingTokenError,
+#     InvalidHeaderError
+# )
 
+from src.core.config import settings
 from src.api.v1.models.auth import (
-    ReqRegistration,
-    RespRegistration,
-    ReqLogin,
-    RespLogin
+    RequestLogin,
+    ResponseLogin
 )
-# from src.dependences.httpx import get_httpx_client, httpx
 from src.services.auth import get_auth_service, AuthService
 from src.services.exceptions import (
-    BadEmailException,
-    EmailExistException,
-    UsernameExistException,
     BadCredsException,
-    UnauthorizedException
 )
+
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl='v1/login'
-)
 
-@router.post('/registration',
-             status_code=status.HTTP_201_CREATED,
-             response_model=RespRegistration)
-async def register_user(
-    request_model: ReqRegistration,
-    service: Annotated[AuthService, Depends(get_auth_service)]
-):
-    try:
-        user_id = await service.get_register(request_model)
-    except BadEmailException:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Wrong email')
-    except EmailExistException:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='User with this email already exists')
-    except UsernameExistException:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='User with this username already exists')
-    return RespRegistration(id=user_id)
+auth_jwt_dep = AuthJWTBearer()
+
+@AuthJWT.load_config
+def get_config():
+    return settings.jwt
 
 
 @router.post('/login',
-            status_code=status.HTTP_200_OK,
-            response_model=dict)
+    status_code=status.HTTP_200_OK,
+    response_model=ResponseLogin)
 async def login(
-    # request_model: ReqLogin,
-    request_model: Annotated[OAuth2PasswordRequestForm, Depends()],
-    service: Annotated[AuthService, Depends(get_auth_service)]
+    request_model: RequestLogin,
+    service: Annotated[AuthService, Depends(get_auth_service)],
+    auth: Annotated[AuthJWT, Depends(auth_jwt_dep)]
 ):
     try:
-        access_token = await service.get_login(request_model)
+        token = await service.get_login(request_model)
     except BadCredsException:
-        import traceback
-        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Wrong username or password'
-        )
-    # return RespLogin(access_token=access_token)
-    return {'access_token': access_token}
+            detail='Wrong username or password')
+    return token
 
 
 @router.post('/logout',
-             status_code=status.HTTP_200_OK,
-             response_model=dict)
+    status_code=status.HTTP_200_OK,
+    response_model=dict)
 async def logout(
-    token: Annotated[str, Depends(oauth2_scheme)],
-    service: Annotated[AuthService, Depends(get_auth_service)]
+    service: Annotated[AuthService, Depends(get_auth_service)],
+    auth: Annotated[str, Depends(auth_jwt_dep)],
 ):
     try:
-        await service.get_logout(token)
+        await service.get_logout()
     except Exception:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized')
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Not authorized')
     return {'logout': 'ok'}
 
 
@@ -88,33 +67,18 @@ async def logout(
             response_model=dict)
 async def user(
     service: Annotated[AuthService, Depends(get_auth_service)],
-    token: Annotated[str, Depends(oauth2_scheme)]
+    auth: Annotated[str, Depends(auth_jwt_dep)]
 ):
     try:
-        user_data = await service.get_user(token)
-    except UnauthorizedException:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized')
+        user_data = await service.get_user()
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Not authorized')
+    # except JWTDecodeError:
+    #     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Wrong JWT access token')
+    # except InvalidHeaderError:
+    #     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Wrong Header. Needs Authriztion Bearer')
+    # except MissingTokenError:
+    #     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized')
     return user_data
-
-
-@router.get('/check',
-            status_code=status.HTTP_200_OK,
-            response_model=dict)
-async def check(
-    service: Annotated[AuthService, Depends(get_auth_service)]
-):
-    try:
-        token = await service.check()
-    except UnauthorizedException:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized')
-    return token
-
-
-@router.post('/test',
-             status_code=status.HTTP_201_CREATED,
-             response_model=dict)
-async def test(
-    service: Annotated[AuthService, Depends(get_auth_service)]
-):
-    token = await service.test()
-    return token

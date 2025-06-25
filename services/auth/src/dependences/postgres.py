@@ -43,6 +43,6 @@ class PostgresDep:
         return user
 
 
-async def get_async_pg() -> AsyncGenerator[PostgresDep]:
+async def get_async_postgres() -> AsyncGenerator[PostgresDep]:
     async with async_session_maker() as session:
         yield PostgresDep(session)

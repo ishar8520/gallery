@@ -1,5 +1,4 @@
 from redis.asyncio import Redis, ConnectionPool
-from collections.abc import AsyncGenerator
 
 from src.core.config import settings
 
@@ -17,13 +16,8 @@ class RedisDep:
     def set_value(self, key: str, value: str, expires: int):
         return self.session.set(key, value, expires)
         
+    def drop_value(self, key: str):
+        return self.session.delete(key)
+    
 async def get_async_redis() -> RedisDep:
     return RedisDep()
-        
-
-# async def get_async_redis() -> AsyncGenerator[Redis, None]:
-#     async with Redis(connection_pool=redis_pool) as redis_client:
-#         try:
-#             yield redis_client
-#         except Exception:
-#             raise
