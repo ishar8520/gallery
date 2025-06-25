@@ -30,6 +30,8 @@ target_metadata = [auth_metadata_obj]
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+# url ='postgresql+asyncpg://user:password@localhost:5432/db'
+url = settings.postgres.url
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
@@ -43,9 +45,12 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = settings.postgres.url
+    
     context.configure(
         url=url,
+        include_schemas=True,
+        compare_type=True,
+        compare_server_default=True,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -56,14 +61,18 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection: Connection) -> None:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            include_schemas=True,
+            compare_type=True,
+            compare_server_default=True,
         )
         with context.begin_transaction():
             context.run_migrations()
 
 async def run_async_migrations() -> None:
     configuration = config.get_section(config.config_ini_section, {})
-    configuration['sqlalchemy.url'] = settings.postgres.url
+    configuration['sqlalchemy.url'] = url
 
     connectable = async_engine_from_config(
         configuration=configuration,
