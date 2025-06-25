@@ -14,19 +14,13 @@ from src.api.v1.models.auth import (
     RequestLogin,
     ResponseLogin
 )
-from src.services.auth import get_auth_service, AuthService
+from src.services.auth import get_auth_service, auth_jwt_dep, AuthService
 from src.services.exceptions import (
     BadCredsException,
 )
 
 
 router = APIRouter()
-
-auth_jwt_dep = AuthJWTBearer()
-
-@AuthJWT.load_config
-def get_config():
-    return settings.jwt
 
 
 @router.post('/login',
@@ -51,9 +45,10 @@ async def login(
     response_model=dict)
 async def logout(
     service: Annotated[AuthService, Depends(get_auth_service)],
-    auth: Annotated[str, Depends(auth_jwt_dep)],
+    auth: Annotated[AuthJWT, Depends(auth_jwt_dep)],
 ):
     try:
+        await auth.jwt_required()
         await service.get_logout()
     except Exception:
         raise HTTPException(
@@ -67,9 +62,10 @@ async def logout(
             response_model=dict)
 async def user(
     service: Annotated[AuthService, Depends(get_auth_service)],
-    auth: Annotated[str, Depends(auth_jwt_dep)]
+    auth: Annotated[AuthJWT, Depends(auth_jwt_dep)]
 ):
     try:
+        await auth.jwt_required()
         user_data = await service.get_user()
     except Exception:
         raise HTTPException(

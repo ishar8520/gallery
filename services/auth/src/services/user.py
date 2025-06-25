@@ -34,6 +34,9 @@ class UserService:
         await self.pg_session.add(user)
         return user.id
     
+    async def get_delete_user(self, user_id: str):
+        pass
+    
 def get_user_service(
     pg_dep: Annotated[AsyncSession, Depends(get_async_postgres)],
     redis_dep: Annotated[RedisDep, Depends(get_async_redis)],
