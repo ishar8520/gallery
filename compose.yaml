@@ -47,8 +47,6 @@ services:
       - gallery-network
     volumes:
       - 'auth-postgres-data:/bitnami/postgresql'
-    ports:
-      - '5432:5432'
     environment:
       - POSTGRESQL_USERNAME=$AUTH_POSTGRESQL_USERNAME
       - POSTGRESQL_PASSWORD=$AUTH_POSTGRESQL_PASSWORD
