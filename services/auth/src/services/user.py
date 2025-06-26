@@ -1,7 +1,7 @@
 from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from uuid import UUID
 from hashlib import sha256
 
@@ -31,11 +31,14 @@ class UserService:
         user = User(username=request_model.username,
                     password=password,
                     email=request_model.email)
-        await self.pg_session.add(user)
+        await self.pg_session.add_user(user)
         return user.id
     
     async def get_delete_user(self, user_id: str):
-        pass
+        print('USER', user_id)
+        # await self.pg_session.check_user()
+        await self.pg_session.delete_user(user_id)
+        return {'as': user_id}
     
 def get_user_service(
     pg_dep: Annotated[AsyncSession, Depends(get_async_postgres)],

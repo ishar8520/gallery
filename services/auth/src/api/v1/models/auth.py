@@ -8,3 +8,8 @@ class RequestLogin(BaseModel):
 class ResponseLogin(BaseModel):
     access_token: str
     refresh_token: str
+
+class ResponseMe(BaseModel):
+    user_id: str
+    username: str
+    email: str

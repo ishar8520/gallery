@@ -14,7 +14,6 @@ from src.services.exceptions import (
     UsernameExistException
 )
 from src.services.user import get_user_service, UserService
-from src.services.auth import auth_jwt_dep
 
 router = APIRouter()
 
@@ -47,18 +46,3 @@ async def register_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='User with this username already exists')
     return ResponseRegistration(id=user_id)
-
-
-@router.delete(
-    '/delete_user/{user_id}',
-    status_code=status.HTTP_200_OK,
-    response_model=dict)
-async def delete_user(
-    user_id: str,
-    service: Annotated[UserService, Depends(get_user_service)],
-    auth: Annotated[AuthJWT, Depends(auth_jwt_dep)]
-):
-    await auth.jwt_required()
-    await service.get_delete_user(user_id)
-
-    return {'Delete': user_id}

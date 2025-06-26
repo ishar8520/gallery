@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from src.api.v1.endpoints import auth, registration
+from src.api.v1.endpoints import auth, registration, user
 
 base_url_prefix = '/auth'
 
@@ -19,3 +19,4 @@ async def healthcheck():
 
 app.include_router(auth.router, prefix=f'{base_url_prefix_api}', tags=['auth'])
 app.include_router(registration.router, prefix=f'{base_url_prefix_api}', tags=['user'])
+app.include_router(user.router, prefix=f'{base_url_prefix_api}', tags=['user'])

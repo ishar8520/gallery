@@ -10,7 +10,11 @@ from src.core.config import settings
 from src.dependences.postgres import get_async_postgres, PostgresDep
 from src.dependences.redis import get_async_redis, RedisDep
 from src.models.users import User
-from src.api.v1.models.auth import RequestLogin, ResponseLogin
+from src.api.v1.models.auth import (
+    RequestLogin,
+    ResponseLogin,
+    ResponseMe
+)
 from src.services.exceptions import (
     EmailExistException,
     UsernameExistException,
@@ -43,7 +47,8 @@ class AuthService:
             raise BadCredsException
 
         claim = {
-            'email': user.email
+            'email': user.email,
+            'user_id': str(user.id)
         }
         access_token = await self.auth.create_access_token(
             subject=request_model.username, user_claims=claim)
@@ -63,16 +68,15 @@ class AuthService:
         await self.redis_session.drop_value(f'token:access:{user.id}')
         return await self.redis_session.drop_value(f'token:refresh:{user.id}')
 
-    async def get_user(self):
+    async def get_me(self):
         claim = await self.auth.get_raw_jwt()
         username = await self.auth.get_jwt_subject()
-        return {
-            'username': username,
-            'email': claim['email']
-        }
-        
-    async def get_me(self):
-        return await self.auth.jwt_required()
+        return ResponseMe(
+            user_id=claim['user_id'],
+            username=username,
+            email=claim['email']
+        )
+
             
     
 
