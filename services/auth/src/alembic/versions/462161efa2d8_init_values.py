@@ -20,11 +20,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.execute("""
+    op.execute(f"""
         INSERT INTO auth.roles (id, role, created_at, updated_at)
         VALUES 
-            (gen_random_uuid(), 'USER', now(), now()),
-            (gen_random_uuid(), 'ADMIN', now(), now())
+            (gen_random_uuid(), {Roles.USER.value}, now(), now()),
+            (gen_random_uuid(), {Roles.ADMIN.value}, now(), now())
     """)
 
 

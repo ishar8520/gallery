@@ -7,7 +7,7 @@ from collections.abc import AsyncGenerator
 from hashlib import sha256
 
 from src.core.config import settings
-from src.models.users import User, Role, UserRoles
+from src.models.user import User, Role, UserRoles
 from src.models.enums import Roles
 
 engine = create_async_engine(settings.postgres.url)

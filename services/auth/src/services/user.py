@@ -7,9 +7,11 @@ from hashlib import sha256
 from src.dependences.postgres import get_async_postgres, PostgresDep
 from src.dependences.redis import get_async_redis, RedisDep
 from src.services.exceptions import UsernameExistException, EmailExistException
-from src.models.users import User, UserRoles
+from src.models.user import User, UserRoles
 from src.models.enums import Roles
 from src.api.v1.models.registration import RequestRegistration
+from src.api.v1.models.user import ResponseUser
+
 
 class UserService:
     pg_session: PostgresDep
@@ -37,6 +39,15 @@ class UserService:
         await self.pg_session.add_user(user, user_role)
         return user.id
     
+    async def get_user(self, user_id: str):
+        user = await self.pg_session.get_user_by_id(user_id)
+        return ResponseUser(
+            user_id=user.id,
+            username=user.username,
+            email=user.email,
+            roles=user.roles
+        )
+        
     async def get_delete_user(self, user_id: str):
         return await self.pg_session.delete_user(user_id)
     

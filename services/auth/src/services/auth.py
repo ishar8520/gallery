@@ -9,7 +9,7 @@ from typing import Annotated
 from src.core.config import settings
 from src.dependences.postgres import get_async_postgres, PostgresDep
 from src.dependences.redis import get_async_redis, RedisDep
-from src.models.users import User
+from src.models.user import User
 from src.api.v1.models.auth import (
     RequestLogin,
     ResponseLogin,
@@ -60,7 +60,7 @@ class AuthService:
 
     async def get_logout(self):
         username = await self.auth.get_jwt_subject()
-        user = await self.pg_session.get_one_or_none(select(User).where(User.username==username))
+        user = await self.pg_session.get_user_by_username(username)
         await self.redis_session.drop_value(f'token:access:{user.id}')
         return await self.redis_session.drop_value(f'token:refresh:{user.id}')
 
