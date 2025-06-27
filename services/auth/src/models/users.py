@@ -1,10 +1,11 @@
+from typing import List
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
     mapped_column,
     relationship
 )
-from sqlalchemy import UUID, String, Integer, DateTime, MetaData, ForeignKey
+from sqlalchemy import UUID, String, Integer, DateTime, MetaData, ForeignKey, Enum
 import uuid
 from datetime import datetime, timezone
 
@@ -45,7 +46,7 @@ class Role(Base):
     __tablename__ = 'roles'
     
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    role: Mapped[str] = mapped_column(String, unique=True)
+    role: Mapped[Roles] = mapped_column(Enum(Roles), unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
                                                  default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
