@@ -23,7 +23,7 @@ async def delete_user(
 ):
     try:
         await auth.jwt_required()
-        d = await service.get_delete_user(user_id)
+        await service.get_delete_user(user_id)
     except (JWTDecodeError, InvalidHeaderError, MissingTokenError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized')
-    return d
+    return {'user_id': user_id}

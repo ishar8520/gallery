@@ -5,7 +5,18 @@ from sqlalchemy.orm import (
     mapped_column,
     relationship
 )
-from sqlalchemy import UUID, String, Integer, DateTime, MetaData, ForeignKey, Enum
+from sqlalchemy.ext.hybrid import hybrid_property
+from sqlalchemy import (
+    UUID,
+    String,
+    Integer,
+    DateTime,
+    MetaData,
+    ForeignKey,
+    Enum,
+    select,
+    func
+)
 import uuid
 from datetime import datetime, timezone
 
@@ -39,8 +50,7 @@ class User(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
                                                  default=lambda: datetime.now(timezone.utc),
                                                  onupdate=lambda: datetime.now(timezone.utc))
-    user_roles: Mapped[list['UserRoles']] = relationship(back_populates='user') 
-
+    user_roles: Mapped[list['UserRoles']] = relationship(back_populates='user')
 
 class Role(Base):
     __tablename__ = 'roles'

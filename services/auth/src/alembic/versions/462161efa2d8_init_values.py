@@ -20,17 +20,12 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    roles_table = sa.table(
-        'roles',
-        schema='auth'
-    )
-    op.bulk_insert(
-        roles_table,
-        [
-            {'role': Roles.USER.value,},
-            {'role': Roles.ADMIN.value,}
-        ]
-    )
+    op.execute("""
+        INSERT INTO auth.roles (id, role, created_at, updated_at)
+        VALUES 
+            (gen_random_uuid(), 'USER', now(), now()),
+            (gen_random_uuid(), 'ADMIN', now(), now())
+    """)
 
 
 def downgrade() -> None:

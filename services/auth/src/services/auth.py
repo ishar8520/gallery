@@ -16,10 +16,7 @@ from src.api.v1.models.auth import (
     ResponseMe
 )
 from src.services.exceptions import (
-    EmailExistException,
-    UsernameExistException,
     BadCredsException,
-    UnauthorizedException
 ) 
 
 auth_jwt_dep = AuthJWTBearer()
@@ -39,16 +36,15 @@ class AuthService:
         self.auth = auth
 
     async def get_login(self, request_model: RequestLogin):
-        user = await self.pg_session.check_user(
+        user, roles = await self.pg_session.get_user_with_roles(
             username=request_model.username,
-            password=request_model.password
-        )
+            password=request_model.password)
         if not user:
             raise BadCredsException
-
         claim = {
             'email': user.email,
-            'user_id': str(user.id)
+            'user_id': str(user.id),
+            'roles': roles
         }
         access_token = await self.auth.create_access_token(
             subject=request_model.username, user_claims=claim)
@@ -74,10 +70,9 @@ class AuthService:
         return ResponseMe(
             user_id=claim['user_id'],
             username=username,
-            email=claim['email']
-        )
-
-            
+            email=claim['email'],
+            roles=claim['roles']
+        )         
     
 
 def get_auth_service(

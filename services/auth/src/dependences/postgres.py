@@ -1,11 +1,14 @@
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import select, delete, Select
+from sqlalchemy.orm import selectinload
+
+from sqlalchemy import select, delete
 from collections.abc import AsyncGenerator
 from hashlib import sha256
 
 from src.core.config import settings
-from src.models.users import User
+from src.models.users import User, Role, UserRoles
+from src.models.enums import Roles
 
 engine = create_async_engine(settings.postgres.url)
 async_session_maker = async_sessionmaker(bind=engine, class_=AsyncSession)
@@ -21,11 +24,12 @@ class PostgresDep:
         except Exception:
             raise
 
-    async def add_user(self, model):
+    async def add_user(self, user: User, user_role: Role):
         try:
-            self.session.add(model)
+            self.session.add(user)
+            self.session.add(user_role)
             await self.session.commit()
-            return await self.session.refresh(model)
+            return await self.session.refresh(user)
         except SQLAlchemyError:
             return self.session.rollback()
     
@@ -35,23 +39,54 @@ class PostgresDep:
             return await self.session.commit()
         except SQLAlchemyError:
             self.session.rollback() 
-
-
-
-    async def get_one_or_none(self, statement: Select):
-        result = await self.session.execute(statement)
-        return result.scalar_one_or_none()
-    
-
-    async def check_user(self, username: str, password: str):
-        user = await self.get_one_or_none(select(User).where(User.username==username))
+            
+    async def get_user_with_roles(self, username: str, password: str):
+        stmt = (
+            select(User)
+            .options(selectinload(User.user_roles).selectinload(UserRoles.role))
+            .where(User.username == username)
+        )
+        result = await self.session.execute(stmt)
+        user = result.scalar_one_or_none()
         if not user:
-            return None
+            return None, None
         password = sha256(password.encode('utf-8')).hexdigest()
         if user.password != password:
-            return None
-        return user
-
+            return None, None
+        roles = [ur.role.role.value for ur in user.user_roles]
+        return user, roles
+    
+    async def get_user_by_username(self, username: str):
+        stmt = (
+            select(User)
+            .where(User.username==username)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+    
+    async def get_user_by_id(self, user_id: str):
+        stmt = (
+            select(User)
+            .where(User.id==user_id)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+    
+    async def get_user_by_email(self, email: str):
+        stmt = (
+            select(User)
+            .where(User.email==email)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+    
+    async def get_role(self, role: Roles):
+        stmt = (
+            select(Role)
+            .where(Role.role==role)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
 
 
 async def get_async_postgres() -> AsyncGenerator[PostgresDep]:
