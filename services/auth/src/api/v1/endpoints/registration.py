@@ -11,7 +11,7 @@ from src.api.v1.models.registration import (
 from src.services.exceptions import (
     BadEmailException,
     EmailExistException,
-    UsernameExistException
+    UserExistException
 )
 from src.services.user import get_user_service, UserService
 
@@ -37,12 +37,12 @@ async def register_user(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='Wrong email')
-    except EmailExistException:
+    # except EmailExistException:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_400_BAD_REQUEST,
+    #         detail='User with this email already exists')
+    except UserExistException:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail='User with this email already exists')
-    except UsernameExistException:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='User with this username already exists')
+            detail='User with this username or email already exists')
     return ResponseRegistration(id=user_id)

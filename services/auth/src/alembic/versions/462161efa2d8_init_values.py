@@ -23,11 +23,11 @@ def upgrade() -> None:
     op.execute(f"""
         INSERT INTO auth.roles (id, role, created_at, updated_at)
         VALUES 
-            (gen_random_uuid(), {Roles.USER.value}, now(), now()),
-            (gen_random_uuid(), {Roles.ADMIN.value}, now(), now())
+            (gen_random_uuid(), '{Roles.USER.value}', now(), now()),
+            (gen_random_uuid(), '{Roles.ADMIN.value}', now(), now())
     """)
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.execute('TRUNCATE auth.roles')
+    op.execute('TRUNCATE auth.roles CASCADE')

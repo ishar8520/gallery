@@ -5,6 +5,7 @@ from async_fastapi_jwt_auth.auth_jwt import AuthJWTBearer
 from fastapi import Depends
 from datetime import timedelta
 from typing import Annotated
+from hashlib import sha256
 
 from src.core.config import settings
 from src.dependences.postgres import get_async_postgres, PostgresDep
@@ -19,11 +20,13 @@ from src.services.exceptions import (
     BadCredsException,
 ) 
 
+
 auth_jwt_dep = AuthJWTBearer()
 
 @AuthJWT.load_config
 def get_config():
     return settings.jwt
+
 
 class AuthService:
     pg_session: PostgresDep
@@ -36,11 +39,13 @@ class AuthService:
         self.auth = auth
 
     async def get_login(self, request_model: RequestLogin):
-        user, roles = await self.pg_session.get_user_with_roles(
-            username=request_model.username,
-            password=request_model.password)
+        user = await self.pg_session.get_user_by_username(request_model.username)
         if not user:
             raise BadCredsException
+        if not user.password == sha256(request_model.password.encode('utf-8')).hexdigest():
+            raise BadCredsException
+        roles = await self.pg_session.get_user_roles(user.id)
+
         claim = {
             'email': user.email,
             'user_id': str(user.id),
@@ -71,9 +76,7 @@ class AuthService:
             user_id=claim['user_id'],
             username=username,
             email=claim['email'],
-            roles=claim['roles']
-        )         
-    
+            roles=claim['roles'])         
 
 def get_auth_service(
     pg_dep: Annotated[AsyncSession, Depends(get_async_postgres)],

@@ -24,37 +24,46 @@ class PostgresDep:
         except Exception:
             raise
 
-    async def add_user(self, user: User, user_role: Role):
+    async def add_user(self, user: User):
         try:
             self.session.add(user)
-            self.session.add(user_role)
             await self.session.commit()
             return await self.session.refresh(user)
         except SQLAlchemyError:
-            return self.session.rollback()
+            return await self.session.rollback()
     
-    async def delete_user(self, user_id):
+    async def add_role(self, role: Role):
+        try:
+            self.session.add(role)
+            await self.session.commit()
+            return await self.session.refresh(role)
+        except SQLAlchemyError:
+            return await self.session.rollback()
+
+    async def delete_user(self, user_id: str):
         try:
             await self.session.execute(delete(User).where(User.id==user_id))
             return await self.session.commit()
         except SQLAlchemyError:
-            self.session.rollback() 
-            
-    async def get_user_with_roles(self, username: str, password: str):
-        stmt = (
-            select(User)
-            .options(selectinload(User.user_roles).selectinload(UserRoles.role))
-            .where(User.username == username)
-        )
-        result = await self.session.execute(stmt)
-        user = result.scalar_one_or_none()
-        if not user:
-            return None, None
-        password = sha256(password.encode('utf-8')).hexdigest()
-        if user.password != password:
-            return None, None
-        roles = [ur.role.role.value for ur in user.user_roles]
-        return user, roles
+            return await self.session.rollback() 
+    
+    # async def patch_user(self, user_id: str, user_update: User):
+        
+    #     self.session.add(user_update)
+
+
+    # async def get_user_with_roles(self, user_id: str):
+    #     stmt = (
+    #         select(User)
+    #         .options(selectinload(User.user_roles).selectinload(UserRoles.role))
+    #         .where(User.id==user_id)
+    #     )
+    #     result = await self.session.execute(stmt)
+    #     user = result.scalar_one_or_none()
+    #     if not user:
+    #         return None, None
+    #     roles = [ur.role.role.value for ur in user.user_roles]
+    #     return user, roles
     
     async def get_user_by_username(self, username: str):
         stmt = (
@@ -80,6 +89,16 @@ class PostgresDep:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
     
+    async def get_user_roles(self, user_id: str):
+        stmt = (
+            select(User)
+            .options(selectinload(User.user_roles).selectinload(UserRoles.role))
+            .where(User.id==user_id)
+        )
+        result = await self.session.execute(stmt)
+        user = result.scalar_one_or_none()
+        return [ur.role.role.value for ur in user.user_roles]
+
     async def get_role(self, role: Roles):
         stmt = (
             select(Role)
@@ -87,6 +106,14 @@ class PostgresDep:
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
+         
+          
+
+    # async def check_user(self, username: str, password: str)
+    #     user await self.get_user_by_username(username)
+    #     if not user: 
+    #     result = await self.session.execute(stmt)
+    #     user = result.scalar_one_or_none()
 
 
 async def get_async_postgres() -> AsyncGenerator[PostgresDep]:

@@ -7,8 +7,14 @@ class EmailExistException(Exception):
 class UsernameExistException(Exception):
     pass
 
+class UserExistException(Exception):
+    pass
+
 class BadCredsException(Exception):
     pass
 
 class UnauthorizedException(Exception):
+    pass
+
+class UserNotFoundException(Exception):
     pass
