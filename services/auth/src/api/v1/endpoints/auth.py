@@ -1,15 +1,12 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from async_fastapi_jwt_auth import AuthJWT
-from async_fastapi_jwt_auth.auth_jwt import AuthJWTBearer
 from async_fastapi_jwt_auth.exceptions import (
-    AuthJWTException,
     JWTDecodeError,
     MissingTokenError,
     InvalidHeaderError
 )
 
-from src.core.config import settings
 from src.api.v1.models.auth import (
     RequestLogin,
     ResponseLogin,
@@ -30,7 +27,6 @@ router = APIRouter()
 async def login(
     request_model: RequestLogin,
     service: Annotated[AuthService, Depends(get_auth_service)],
-    auth: Annotated[AuthJWT, Depends(auth_jwt_dep)]
 ):
     try:
         token = await service.get_login(request_model)
@@ -69,5 +65,7 @@ async def me(
         await auth.jwt_required()
         user_data = await service.get_me()
     except (JWTDecodeError, InvalidHeaderError, MissingTokenError):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized')
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail='Not authorized')
     return user_data

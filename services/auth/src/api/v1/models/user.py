@@ -1,6 +1,5 @@
 from pydantic import BaseModel
 import uuid
-from typing import List
 
 
 class ResponseUser(BaseModel):
@@ -9,5 +8,5 @@ class ResponseUser(BaseModel):
     email: str
 
 class RequestPatchUser(BaseModel):
-    username: set
+    username: str
     email: str

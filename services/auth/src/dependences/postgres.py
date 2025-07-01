@@ -4,7 +4,6 @@ from sqlalchemy.orm import selectinload
 
 from sqlalchemy import select, delete
 from collections.abc import AsyncGenerator
-from hashlib import sha256
 
 from src.core.config import settings
 from src.models.user import User, Role, UserRoles
@@ -28,7 +27,8 @@ class PostgresDep:
         try:
             self.session.add(user)
             await self.session.commit()
-            return await self.session.refresh(user)
+            await self.session.refresh(user)
+            return user.id
         except SQLAlchemyError:
             return await self.session.rollback()
     
@@ -36,7 +36,8 @@ class PostgresDep:
         try:
             self.session.add(role)
             await self.session.commit()
-            return await self.session.refresh(role)
+            await self.session.refresh(role)
+            return role
         except SQLAlchemyError:
             return await self.session.rollback()
 
@@ -47,24 +48,7 @@ class PostgresDep:
         except SQLAlchemyError:
             return await self.session.rollback() 
     
-    # async def patch_user(self, user_id: str, user_update: User):
-        
-    #     self.session.add(user_update)
-
-
-    # async def get_user_with_roles(self, user_id: str):
-    #     stmt = (
-    #         select(User)
-    #         .options(selectinload(User.user_roles).selectinload(UserRoles.role))
-    #         .where(User.id==user_id)
-    #     )
-    #     result = await self.session.execute(stmt)
-    #     user = result.scalar_one_or_none()
-    #     if not user:
-    #         return None, None
-    #     roles = [ur.role.role.value for ur in user.user_roles]
-    #     return user, roles
-    
+   
     async def get_user_by_username(self, username: str):
         stmt = (
             select(User)
@@ -106,14 +90,6 @@ class PostgresDep:
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
-         
-          
-
-    # async def check_user(self, username: str, password: str)
-    #     user await self.get_user_by_username(username)
-    #     if not user: 
-    #     result = await self.session.execute(stmt)
-    #     user = result.scalar_one_or_none()
 
 
 async def get_async_postgres() -> AsyncGenerator[PostgresDep]:

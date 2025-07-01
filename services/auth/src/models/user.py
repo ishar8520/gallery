@@ -1,26 +1,22 @@
-from typing import List
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
     mapped_column,
     relationship
 )
-from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy import (
     UUID,
     String,
-    Integer,
     DateTime,
     MetaData,
     ForeignKey,
     Enum,
-    select,
-    func
 )
 import uuid
 from datetime import datetime, timezone
 
 from src.models.enums import Roles
+
 
 auth_metadata_obj = MetaData(
     schema='auth',
@@ -52,6 +48,7 @@ class User(Base):
                                                  onupdate=lambda: datetime.now(timezone.utc))
     user_roles: Mapped[list['UserRoles']] = relationship(back_populates='user')
 
+
 class Role(Base):
     __tablename__ = 'roles'
     
@@ -76,6 +73,5 @@ class UserRoles(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
                                                  default=lambda: datetime.now(timezone.utc),
                                                  onupdate=lambda: datetime.now(timezone.utc))
-    
     user: Mapped['User'] = relationship(back_populates='user_roles')
     role: Mapped['Role'] = relationship(back_populates='user_roles')

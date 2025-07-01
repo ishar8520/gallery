@@ -1,5 +1,4 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from hashlib import sha256
 
 class PostgresConfig(BaseSettings):
     model_config = SettingsConfigDict(env_prefix='postgresql_')
@@ -30,7 +29,8 @@ class JWTConfig(BaseSettings):
     model_config = SettingsConfigDict(env_prefix='jwt_')
     
     authjwt_secret_key: str
-    authjwt_token_location: set = {"headers"} 
+    authjwt_token_location: set = {"cookies"}
+    authjwt_cookie_csrf_protect: bool = False
     
 class Settings(BaseSettings):
     postgres: PostgresConfig = PostgresConfig()
