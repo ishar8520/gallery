@@ -1,0 +1,119 @@
+services:
+  nginx:
+    container_name: nginx
+    build: 
+      context: './services/nginx'
+    networks:
+      - gallery-network
+    ports:
+      - '8000:8080'
+    volumes:
+      - 'nginx-logs-data:/opt/bitnami/nginx/logs'
+    depends_on:
+      auth-service:
+        condition: service_healthy
+      gallery-service:
+        condition: service_healthy
+
+  auth-service:
+    container_name: auth-service
+    build:
+      context: ./services/auth
+    networks:
+      - gallery-network
+    environment:
+      - POSTGRESQL_USERNAME=$AUTH_POSTGRESQL_USERNAME
+      - POSTGRESQL_PASSWORD=$AUTH_POSTGRESQL_PASSWORD
+      - POSTGRESQL_DATABASE=$AUTH_POSTGRESQL_DATABASE
+      - POSTGRESQL_HOST=auth-postgres
+      - POSTGRESQL_PORt=5432
+      - REDIS_HOST=auth-redis
+      - REDIS_PORT=6379
+      - JWT_AUTHJWT_SECRET_KEY=$SECRET_KEY
+    depends_on:
+      auth-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:8000/auth/api/v1/_healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  auth-postgres:
+    container_name: auth-postgres
+    image: bitnami/postgresql:17
+    networks:
+      - gallery-network
+    volumes:
+      - 'auth-postgres-data:/bitnami/postgresql'
+    environment:
+      - POSTGRESQL_USERNAME=$AUTH_POSTGRESQL_USERNAME
+      - POSTGRESQL_PASSWORD=$AUTH_POSTGRESQL_PASSWORD
+      - POSTGRESQL_DATABASE=$AUTH_POSTGRESQL_DATABASE
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready --username=$AUTH_POSTGRESQL_USERNAME --dbname=$AUTH_POSTGRESQL_DATABASE"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  auth-redis:
+    container_name: auth-redis
+    image: bitnami/redis:8.0
+    networks:
+      - gallery-network
+    volumes:
+      - 'auth-redis-data:/bitnami/redis/data'
+    environment:
+      - ALLOW_EMPTY_PASSWORD=yes
+    command: [ '/opt/bitnami/scripts/redis/run.sh', '--maxmemory', '${REDIS_MAXMEMORY:-200mb}' ]
+    healthcheck:
+      test: ["CMD", "/bin/bash", "-c", "[[ $(redis-cli ping) == 'PONG' ]] " ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+    
+  gallery-service:
+    container_name: gallery-service
+    build:
+      context: ./services/gallery
+    networks:
+      - gallery-network
+    environment:
+      - PROJECT_TITLE=gallery
+      - MINIO_HOST=minio
+      - MINIO_PORT=9000
+      - MINIO_USER=$MINIO_USER
+      - MINIO_PASSWORD=$MINIO_PASSWORD
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:8000/api/v1/_healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  minio:
+    container_name: gallery-minio
+    build:
+      context: './services/minio'
+    networks:
+      - gallery-network
+    environment:
+      - MINIO_ROOT_USER=$MINIO_USER
+      - MINIO_ROOT_PASSWORD=$MINIO_PASSWORD
+    volumes:
+      - 'minio-data:/data'
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+
+networks:
+  gallery-network:
+
+volumes:
+  nginx-logs-data:
+  minio-data:
+  auth-postgres-data:
+  auth-redis-data:

@@ -1,0 +1,8 @@
+services:
+  auth-redis:
+    ports:
+      - '6379:6379'
+
+  auth-postgres:
+    ports:
+      - '5432:5432'
