@@ -29,9 +29,8 @@ async def login(
     try:
         token = await service.get_login(request_model)
     except exceptions.BadCredsException:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Wrong username or password')
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail='Wrong username or password')
     return token
 
 
@@ -46,9 +45,8 @@ async def logout(
         await auth.jwt_required()
         await service.get_logout()
     except Exception:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='Not authorized')
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Not authorized')
     return {'logout': 'ok'}
 
 
@@ -63,7 +61,6 @@ async def me(
         await auth.jwt_required()
         user_data = await service.get_me()
     except (JWTDecodeError, InvalidHeaderError, MissingTokenError):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='Not authorized')
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Not authorized')
     return user_data

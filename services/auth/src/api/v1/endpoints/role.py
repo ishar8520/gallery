@@ -23,23 +23,27 @@ router = APIRouter()
 async def add_user_role(
     user_id: uuid.UUID,
     role: Roles,
-    service: Annotated[RoleService, Depends(get_role_service)],
+    role_service: Annotated[RoleService, Depends(get_role_service)],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
     auth: Annotated[AuthJWT, Depends(auth_jwt_dep)]
 ):
     try:
         await auth.jwt_required()
         await auth_service.is_admin(Roles.ADMIN.value)
-        await service.add_user_role(user_id, role)
+        await role_service.add_user_role(user_id, role)
         await auth_service.get_refresh(user_id=user_id)
     except exceptions.UserNotFoundException:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User not found')
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail='User not found')
     except exceptions.RoleExistException:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User already have this role')
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail='User already have this role')
     except exceptions.BadPermissionsException:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f'Current user have not ADMIN role')
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f'Current user have not ADMIN role')
     except (JWTDecodeError, InvalidHeaderError, MissingTokenError):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized')
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Not authorized')
     return {'user': user_id}
 
 @router.get(
@@ -56,7 +60,8 @@ async def get_user_role(
         await auth.jwt_required()
         roles = await service.get_user_role(user_id)
     except (JWTDecodeError, InvalidHeaderError, MissingTokenError):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized')
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Not authorized')
     return {'user_id': user_id,
             'roles': roles}  
 
@@ -67,23 +72,28 @@ async def get_user_role(
     response_model=dict
 )
 async def delete_user_role(
+    
     user_id: uuid.UUID,
     role: Roles,
-    service: Annotated[RoleService, Depends(get_role_service)],
+    role_service: Annotated[RoleService, Depends(get_role_service)],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
     auth: Annotated[AuthJWT, Depends(auth_jwt_dep)]
 ):
     try:
         await auth.jwt_required()
         await auth_service.check_role(Roles.ADMIN.value)
-        await service.delete_user_role(user_id, role)
+        await role_service.delete_user_role(user_id, role)
         await auth_service.get_refresh(user_id=user_id)
     except exceptions.UserNotFoundException:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='User not found')
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail='User not found')
     except exceptions.RoleNotFoundException:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User don't have this role")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="User don't have this role")
     except exceptions.BadPermissionsException:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f'Current user have not ADMIN role')
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail=f'Current user have not ADMIN role')
     except (JWTDecodeError, InvalidHeaderError, MissingTokenError):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized')
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Not authorized')
     return {'user': user_id}

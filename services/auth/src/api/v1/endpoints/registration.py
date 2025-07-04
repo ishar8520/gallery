@@ -30,11 +30,9 @@ async def register_user(
     try:
         user_id = await service.get_register(request_model)
     except exceptions.BadEmailException:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='Wrong email')
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail='Wrong email')
     except exceptions.UserExistException:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail='User with this username or email already exists')
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail='User with this username or email already exists')
     return ResponseRegistration(id=user_id)
