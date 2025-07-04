@@ -15,9 +15,7 @@ from src.api.v1.models.auth import (
     ResponseLogin,
     ResponseMe
 )
-from src.services.exceptions import (
-    BadCredsException,
-) 
+from src.services import exceptions 
 
 
 auth_jwt_dep = AuthJWTBearer()
@@ -31,44 +29,35 @@ def get_config():
 class AuthService:
     pg_session: PostgresDep
     redis_session: RedisDep
-    auth: AuthJWT
+    jwt: AuthJWT
 
-    def __init__(self, postgres: AsyncSession, redis: RedisDep, auth: AuthJWT) -> None:
+    def __init__(self, postgres: AsyncSession, redis: RedisDep, jwt: AuthJWT) -> None:
         self.pg_session = postgres
         self.redis_session = redis
-        self.auth = auth
+        self.jwt = jwt
 
     async def get_login(self, request_model: RequestLogin) -> ResponseLogin:
         user = await self.pg_session.get_user_by_username(request_model.username)
         if not user or not user.password == sha256(request_model.password.encode('utf-8')).hexdigest():
-            raise BadCredsException
+            raise exceptions.BadCredsException
         roles = await self.pg_session.get_user_roles(user.id)
         claim = {'email': user.email,
                 'user_id': str(user.id),
                 'roles': roles}
-        access_token = await self.auth.create_access_token(
-            subject=request_model.username, user_claims=claim)
-        refresh_token = await self.auth.create_refresh_token(
-            subject=request_model.username)
-        await self.auth.set_access_cookies(access_token)
-        await self.auth.set_refresh_cookies(refresh_token)
-        expires = timedelta(hours=1)
-        await self.redis_session.set_value(f'token:access:{user.id}', access_token, int(expires.total_seconds()))
-        expires = timedelta(days=7)
-        await self.redis_session.set_value(f'token:refresh:{user.id}', refresh_token, int(expires.total_seconds()))
+        access_token, refresh_token = await self.get_tokens(user.username, user.id, claim)
         return ResponseLogin(
             access_token=access_token,
             refresh_token=refresh_token)
 
     async def get_logout(self) -> None:
-        claim = await self.auth.get_raw_jwt()
+        claim = await self.jwt.get_raw_jwt()
         await self.redis_session.drop_value(f'token:access:{claim["user_id"]}')
         await self.redis_session.drop_value(f'token:refresh:{claim["user_id"]}')
-        return await self.auth.unset_jwt_cookies()
+        return await self.jwt.unset_jwt_cookies()
 
     async def get_me(self) -> ResponseMe:
-        claim = await self.auth.get_raw_jwt()
-        username = await self.auth.get_jwt_subject()
+        claim = await self.jwt.get_raw_jwt()
+        username = await self.jwt.get_jwt_subject()
         return ResponseMe(
             user_id=claim['user_id'],
             username=username,
@@ -81,23 +70,37 @@ class AuthService:
         claim = {'email': user.email,
                 'user_id': str(user_id),
                 'roles': roles}
-        access_token = await self.auth.create_access_token(
-            subject=user.username, user_claims=claim)
-        refresh_token = await self.auth.create_refresh_token(
-            subject=user.username)
-        await self.auth.set_access_cookies(access_token)
-        await self.auth.set_refresh_cookies(refresh_token)
-        expires = timedelta(hours=1)
-        await self.redis_session.set_value(f'token:access:{user.id}', access_token, int(expires.total_seconds()))
-        expires = timedelta(days=7)
-        await self.redis_session.set_value(f'token:refresh:{user.id}', refresh_token, int(expires.total_seconds()))
+        access_token, refresh_token = await self.get_tokens(user.username, user.id, claim)
         return ResponseLogin(
             access_token=access_token,
             refresh_token=refresh_token)
+
+    async def get_tokens(self, username: str, user_id: UUID, claim: dict):
+        access_token = await self.jwt.create_access_token(
+            subject=username, user_claims=claim)
+        refresh_token = await self.jwt.create_refresh_token(
+            subject=username)
+        await self.jwt.set_access_cookies(access_token)
+        await self.jwt.set_refresh_cookies(refresh_token)
+        expires = timedelta(hours=1)
+        await self.redis_session.set_value(f'token:access:{user_id}',
+                                           access_token,
+                                           int(expires.total_seconds()))
+        expires = timedelta(days=7)
+        await self.redis_session.set_value(f'token:refresh:{user_id}',
+                                           refresh_token,
+                                           int(expires.total_seconds()))
+        return access_token, refresh_token
+
+    async def check_role(self, role: str):
+        user = await self.get_me()
+        if not role in user.roles:
+            raise exceptions.BadPermissionsException
+        return True
 
 def get_auth_service(
     pg_dep: Annotated[AsyncSession, Depends(get_async_postgres)],
     redis_dep: Annotated[RedisDep, Depends(get_async_redis)],
     auth_dep: Annotated[AuthJWT, Depends(auth_jwt_dep)]
     ) -> AuthService:
-    return AuthService(postgres=pg_dep, redis=redis_dep, auth=auth_dep)
+    return AuthService(postgres=pg_dep, redis=redis_dep, jwt=auth_dep)

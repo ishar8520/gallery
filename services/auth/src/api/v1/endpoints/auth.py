@@ -13,9 +13,7 @@ from src.api.v1.models.auth import (
     ResponseMe
 )
 from src.services.auth import get_auth_service, auth_jwt_dep, AuthService
-from src.services.exceptions import (
-    BadCredsException,
-)
+from src.services import exceptions
 
 
 router = APIRouter()
@@ -30,7 +28,7 @@ async def login(
 ):
     try:
         token = await service.get_login(request_model)
-    except BadCredsException:
+    except exceptions.BadCredsException:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='Wrong username or password')

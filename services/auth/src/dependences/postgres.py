@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import selectinload
+import uuid
 
 from sqlalchemy import select, delete
 from collections.abc import AsyncGenerator
@@ -32,22 +33,36 @@ class PostgresDep:
         except SQLAlchemyError:
             return await self.session.rollback()
     
-    async def add_role(self, role: Role):
+    async def add_user_role(self, role: Role):
         try:
             self.session.add(role)
             await self.session.commit()
-            await self.session.refresh(role)
-            return role
+            return await self.session.refresh(role)
         except SQLAlchemyError:
             return await self.session.rollback()
-
-    async def delete_user(self, user_id: str):
+ 
+    async def delete_user(self, user_id: uuid.UUID):
         try:
-            await self.session.execute(delete(User).where(User.id==user_id))
+            stmt = (
+                delete(User)
+                .where(User.id==user_id)
+            )
+            await self.session.execute(stmt)
             return await self.session.commit()
         except SQLAlchemyError:
             return await self.session.rollback() 
     
+    async def delete_role(self, user: User, role: Role):
+        try:
+            stmt = (
+                delete(UserRoles)
+                .where(UserRoles.user==user)
+                .where(UserRoles.role==role)
+            )
+            await self.session.execute(stmt)
+            return await self.session.commit() 
+        except SQLAlchemyError:
+            return await self.session.rollback()
    
     async def get_user_by_username(self, username: str):
         stmt = (
@@ -57,7 +72,7 @@ class PostgresDep:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
     
-    async def get_user_by_id(self, user_id: str):
+    async def get_user_by_id(self, user_id: uuid.UUID):
         stmt = (
             select(User)
             .where(User.id==user_id)
@@ -73,7 +88,7 @@ class PostgresDep:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
     
-    async def get_user_roles(self, user_id: str):
+    async def get_user_roles(self, user_id: uuid.UUID):
         stmt = (
             select(User)
             .options(selectinload(User.user_roles).selectinload(UserRoles.role))
@@ -81,7 +96,7 @@ class PostgresDep:
         )
         result = await self.session.execute(stmt)
         user = result.scalar_one_or_none()
-        return [ur.role.role.value for ur in user.user_roles]
+        return [ur.role.role for ur in user.user_roles]
 
     async def get_role(self, role: Roles):
         stmt = (

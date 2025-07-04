@@ -8,10 +8,7 @@ from src.api.v1.models.registration import (
     ResponseRegistration,
     RequestRegistration
 )
-from src.services.exceptions import (
-    BadEmailException,
-    UserExistException
-)
+from src.services import exceptions
 from src.services.user import get_user_service, UserService
 
 router = APIRouter()
@@ -32,11 +29,11 @@ async def register_user(
 ):
     try:
         user_id = await service.get_register(request_model)
-    except BadEmailException:
+    except exceptions.BadEmailException:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='Wrong email')
-    except UserExistException:
+    except exceptions.UserExistException:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail='User with this username or email already exists')
