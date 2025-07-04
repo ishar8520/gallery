@@ -14,7 +14,6 @@ engine = create_async_engine(settings.postgres.url)
 async_session_maker = async_sessionmaker(bind=engine, class_=AsyncSession)
 
 
-
 class PostgresDep:
     session: AsyncSession
     

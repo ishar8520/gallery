@@ -19,8 +19,14 @@ class UserService:
         self.pg_session = postgres
 
     async def get_register(self, request_model: RequestRegistration) -> UUID:
-        if not await self.check_exist_user(username=request_model.username, 
-                                           email=request_model.email):
+        try:
+            user = await self.pg_session.get_user_by_username(request_model.username)
+            if user:
+                raise exceptions.UsernameExistException
+            email = await self.pg_session.get_user_by_email(request_model.email)
+            if email:
+                raise exceptions.EmailExistException
+        except (exceptions.UsernameExistException, exceptions.EmailExistException):
             raise exceptions.UserExistException
         role = await self.pg_session.get_role(Roles.USER)
         password = sha256(request_model.password.encode('utf-8')).hexdigest()
@@ -70,7 +76,6 @@ class UserService:
                     raise exceptions.EmailExistException
         return True
         
-
 
 def get_user_service(
     pg_dep: Annotated[AsyncSession, Depends(get_async_postgres)],

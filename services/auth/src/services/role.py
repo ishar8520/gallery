@@ -8,6 +8,7 @@ from src.dependences.postgres import PostgresDep, get_async_postgres
 from src.models.enums import Roles
 from src.models.user import UserRoles
 
+
 class RoleService:
     pg_session: PostgresDep
 

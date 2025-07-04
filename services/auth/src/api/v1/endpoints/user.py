@@ -13,6 +13,7 @@ from src.services import exceptions
 from src.models.enums import Roles
 from src.api.v1.models.user import ResponseUser, RequestPatchUser
 
+
 router = APIRouter()
 
 

@@ -12,6 +12,7 @@ from src.services.auth import AuthJWT, auth_jwt_dep, AuthService, get_auth_servi
 from src.services import exceptions
 from src.models.enums import Roles
 
+
 router = APIRouter()
 
 
