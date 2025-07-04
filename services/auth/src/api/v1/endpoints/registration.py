@@ -20,9 +20,12 @@ def get_config():
     return settings.jwt
 
 
-@router.post('/registration',
+@router.post(
+    '/registration',
     status_code=status.HTTP_201_CREATED,
-    response_model=ResponseRegistration)
+    response_model=ResponseRegistration,
+    description="""Зарегистрировать нового пользователя в системе\n
+    Разрешения: Все пользователи""")
 async def register_user(
     request_model: RequestRegistration,
     service: Annotated[UserService, Depends(get_user_service)]

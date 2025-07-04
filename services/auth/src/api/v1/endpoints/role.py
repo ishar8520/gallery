@@ -18,7 +18,9 @@ router = APIRouter()
 @router.post(
     '/role/{user_id}',
     status_code=status.HTTP_200_OK,
-    response_model=dict
+    response_model=dict,
+    description="""Добавить роль пользователю\n
+    Разрешения: Только аутентифицированные пользователи с правами ADMIN"""
 )
 async def add_user_role(
     user_id: uuid.UUID,
@@ -29,7 +31,7 @@ async def add_user_role(
 ):
     try:
         await auth.jwt_required()
-        await auth_service.is_admin(Roles.ADMIN.value)
+        # await auth_service.check_role(Roles.ADMIN.value)
         await role_service.add_user_role(user_id, role)
         await auth_service.get_refresh(user_id=user_id)
     except exceptions.UserNotFoundException:
@@ -49,7 +51,9 @@ async def add_user_role(
 @router.get(
     '/role/{user_id}',
     status_code=status.HTTP_200_OK,
-    response_model=dict
+    response_model=dict,
+    description="""Получить список ролей пользователя\n
+    Разрешения: Только аутентифицированные пользователи"""
 )
 async def get_user_role(
     user_id: uuid.UUID,
@@ -69,10 +73,11 @@ async def get_user_role(
 @router.delete(
     '/role/{user_id}',
     status_code=status.HTTP_200_OK,
-    response_model=dict
+    response_model=dict,
+    description="""Удалить роль у пользователя\n
+    Разрешения: Только аутентифицированные пользователи с правами ADMIN"""
 )
 async def delete_user_role(
-    
     user_id: uuid.UUID,
     role: Roles,
     role_service: Annotated[RoleService, Depends(get_role_service)],

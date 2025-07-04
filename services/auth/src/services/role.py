@@ -42,7 +42,7 @@ class RoleService:
         if role not in user_roles:
             raise exceptions.RoleNotFoundException
         role = await self.pg_session.get_role(role)
-        return await self.pg_session.delete_role(user, role)
+        return await self.pg_session.delete_user_role(user, role)
         
 
 async def get_role_service(

@@ -1,6 +1,3 @@
-class BadEmailException(Exception):
-    pass
-
 class EmailExistException(Exception):
     pass
 
@@ -11,6 +8,9 @@ class RoleExistException(Exception):
     pass
 
 class UserExistException(Exception):
+    pass
+
+class BadEmailException(Exception):
     pass
 
 class BadCredsException(Exception):

@@ -19,7 +19,9 @@ router = APIRouter()
 @router.get(
     '/user/{user_id}',
     status_code=status.HTTP_200_OK,
-    response_model=ResponseUser
+    response_model=ResponseUser,
+    description="""Получить информацию о пользователе из БД\n
+    Разрешения: Только аутентифицированные пользователи"""
 )
 async def get_user(
     user_id: uuid.UUID,
@@ -41,7 +43,10 @@ async def get_user(
 @router.delete(
     '/user/{user_id}',
     status_code=status.HTTP_200_OK,
-    response_model=dict)
+    response_model=dict,
+    description="""Удалить пользователя из БД\n
+    Разрешения: Только аутентифицированные пользователи с правами ADMIN"""
+)
 async def delete_user(
     user_id: uuid.UUID,
     user_service: Annotated[UserService, Depends(get_user_service)],
@@ -68,6 +73,9 @@ async def delete_user(
     '/user/{user_id}',
     status_code=status.HTTP_200_OK,
     response_model=dict,
+    description="""Обновить информацию о пользователе в БД\n
+    Разрешения: Только аутентифицированные пользователи с правами ADMIN для редактирования всех пользователей\n
+    Только авторизованные пользователи для редактирования своих данных"""
 )
 async def patch_user(
     user_id: uuid.UUID,

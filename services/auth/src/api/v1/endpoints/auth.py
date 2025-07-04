@@ -19,13 +19,24 @@ from src.services import exceptions
 router = APIRouter()
 
 
-@router.post('/login',
+@router.post(
+    '/login',
     status_code=status.HTTP_200_OK,
-    response_model=ResponseLogin)
+    response_model=ResponseLogin,
+    description="""Аутентификация пользователя в системе\n
+    Разрешения: Только не аутентифицированные пользователи"""
+)
 async def login(
     request_model: RequestLogin,
     service: Annotated[AuthService, Depends(get_auth_service)],
+    auth: Annotated[AuthJWT, Depends(auth_jwt_dep)]
 ):
+    try:
+        await auth.jwt_required()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail='You are already login. Logout first')
+    except (JWTDecodeError, InvalidHeaderError, MissingTokenError):
+        pass
     try:
         token = await service.get_login(request_model)
     except exceptions.BadCredsException:
@@ -34,9 +45,13 @@ async def login(
     return token
 
 
-@router.post('/logout',
+@router.post(
+    '/logout',
     status_code=status.HTTP_200_OK,
-    response_model=dict)
+    response_model=dict,
+    description="""Деаутентификация пользовтаеля из системы\n
+    Разрешения: Только аутентифицированные пользователи"""
+)
 async def logout(
     service: Annotated[AuthService, Depends(get_auth_service)],
     auth: Annotated[AuthJWT, Depends(auth_jwt_dep)],
@@ -44,15 +59,19 @@ async def logout(
     try:
         await auth.jwt_required()
         await service.get_logout()
-    except Exception:
+    except (JWTDecodeError, InvalidHeaderError, MissingTokenError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Not authorized')
     return {'logout': 'ok'}
 
 
-@router.get('/me',
-            status_code=status.HTTP_200_OK,
-            response_model=ResponseMe)
+@router.get(
+    '/me',
+    status_code=status.HTTP_200_OK,
+    response_model=ResponseMe,
+    description="""Прочитать информацию из JWT\n
+    Разрешения: Только аутентифицированные пользователи"""
+)
 async def me(
     service: Annotated[AuthService, Depends(get_auth_service)],
     auth: Annotated[AuthJWT, Depends(auth_jwt_dep)]

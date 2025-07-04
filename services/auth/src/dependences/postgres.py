@@ -52,7 +52,7 @@ class PostgresDep:
         except SQLAlchemyError:
             return await self.session.rollback() 
     
-    async def delete_role(self, user: User, role: Role):
+    async def delete_user_role(self, user: User, role: Role):
         try:
             stmt = (
                 delete(UserRoles)
