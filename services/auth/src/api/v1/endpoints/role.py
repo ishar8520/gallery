@@ -34,7 +34,7 @@ async def add_user_role(
         await auth.jwt_required()
         # await auth_service.check_role(Roles.ADMIN.value)
         await role_service.add_user_role(user_id, role)
-        await auth_service.get_refresh(user_id=user_id)
+        await auth_service.get_update_token(user_id=user_id)
     except exceptions.UserNotFoundException:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='User not found')
@@ -89,7 +89,7 @@ async def delete_user_role(
         await auth.jwt_required()
         await auth_service.check_role(Roles.ADMIN.value)
         await role_service.delete_user_role(user_id, role)
-        await auth_service.get_refresh(user_id=user_id)
+        await auth_service.get_update_token(user_id=user_id)
     except exceptions.UserNotFoundException:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='User not found')

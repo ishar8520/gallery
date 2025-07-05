@@ -57,29 +57,34 @@ class AuthService:
 
     async def get_me(self) -> ResponseMe:
         claim = await self.jwt.get_raw_jwt()
-        username = await self.jwt.get_jwt_subject()
+        user_id = await self.jwt.get_jwt_subject()
         return ResponseMe(
-            user_id=claim['user_id'],
-            username=username,
+            user_id=user_id,
+            username=claim['username'],
             email=claim['email'],
             roles=claim['roles'])         
 
-    async def get_refresh(self, user_id: UUID) -> ResponseLogin:
+    async def get_update_token(self, user_id: UUID) -> ResponseLogin:
         user = await self.pg_session.get_user_by_id(user_id)
         roles = await self.pg_session.get_user_roles(user_id)
-        claim = {'email': user.email,
-                'user_id': str(user_id),
-                'roles': roles}
-        access_token, refresh_token = await self.get_tokens(user.username, user.id, claim)
+        claim = {'username': user.username,
+                 'email': user.email,
+                 'user_id': str(user_id),
+                 'roles': roles}
+        access_token, refresh_token = await self.get_tokens(user.id, claim)
         return ResponseLogin(
             access_token=access_token,
             refresh_token=refresh_token)
+        
+    async def get_refresh(self, refresh_token: str):
+        claim = await self.jwt.get_raw_jwt()
+        user_id = await self.jwt.get_jwt_subject()
 
-    async def get_tokens(self, username: str, user_id: UUID, claim: dict):
+    async def get_tokens(self, user_id: UUID, claim: dict):
         access_token = await self.jwt.create_access_token(
-            subject=username, user_claims=claim)
+            subject=user_id, user_claims=claim)
         refresh_token = await self.jwt.create_refresh_token(
-            subject=username)
+            subject=user_id, user_claims=claim)
         await self.jwt.set_access_cookies(access_token)
         await self.jwt.set_refresh_cookies(refresh_token)
         expires = timedelta(hours=1)
