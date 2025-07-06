@@ -37,6 +37,7 @@ class AuthService:
         self.jwt = jwt
 
     async def get_login(self, request_model: RequestLogin) -> ResponseLogin:
+        """Аутентификация пользователя"""
         user = await self.pg_session.get_user_by_username(request_model.username)
         if not user or not user.password == sha256(request_model.password.encode('utf-8')).hexdigest():
             raise exceptions.BadCredsException
@@ -51,12 +52,14 @@ class AuthService:
             refresh_token=refresh_token)
 
     async def get_logout(self) -> None:
+        """Деаутентификация пользователя"""
         claim = await self.jwt.get_raw_jwt()
         await self.redis_session.drop_value(f'token:access:{claim["user_id"]}')
         await self.redis_session.drop_value(f'token:refresh:{claim["user_id"]}')
         return await self.jwt.unset_jwt_cookies()
 
     async def get_me(self) -> ResponseMe:
+        """Получение информации из JWT"""
         claim = await self.jwt.get_raw_jwt()
         user_id = await self.jwt.get_jwt_subject()
         return ResponseMe(
@@ -66,6 +69,7 @@ class AuthService:
             roles=claim['roles'])         
         
     async def get_refresh(self):
+        """Обновление JWT-access"""
         user_id = await self.jwt.get_jwt_subject()
         user = await self.pg_session.get_user_by_id(user_id)
         roles = await self.pg_session.get_user_roles(user.id)
@@ -83,6 +87,7 @@ class AuthService:
         return access_token
     
     async def get_tokens(self, user_id: UUID, claim: dict):
+        """Создание JWT-access и JWT-refresh"""
         access_token = await self.jwt.create_access_token(
             subject=str(user_id), 
             user_claims=claim)
@@ -100,10 +105,12 @@ class AuthService:
         return access_token, refresh_token
 
     async def check_role(self, role: str):
+        """Проверка наличия роли у текущего пользователя"""
         user = await self.get_me()
         if not role in user.roles:
             raise exceptions.BadPermissionsException
         return True
+
 
 def get_auth_service(
     pg_dep: Annotated[AsyncSession, Depends(get_async_postgres)],

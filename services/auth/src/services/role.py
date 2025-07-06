@@ -15,8 +15,8 @@ class RoleService:
     def __init__(self, postgres):
         self.pg_session=postgres
 
-
-    async def add_user_role(self, user_id: uuid.UUID, role: Roles):
+    async def add_user_role(self, user_id: uuid.UUID, role: Roles) -> UserRoles:
+        """Добавление пользователю новой роли"""
         user = await self.pg_session.get_user_by_id(user_id)
         if not user:
             raise exceptions.UserNotFoundException
@@ -28,14 +28,16 @@ class RoleService:
         user_id = await self.pg_session.add_user(user)
         return await self.pg_session.add_user_role(user_role)
 
-    async def get_user_role(self, user_id: uuid.UUID):
+    async def get_user_role(self, user_id: uuid.UUID) -> UserRoles:
+        """Получение всех ролей пользователя"""
         user = await self.pg_session.get_user_by_id(user_id)
         if not user:
             raise exceptions.UserNotFoundException
         user_roles = await self.pg_session.get_user_roles(user_id)
         return user_roles
 
-    async def delete_user_role(self, user_id: uuid.UUID, role: Roles):
+    async def delete_user_role(self, user_id: uuid.UUID, role: Roles) -> None:
+        """Удаление роли у пользователя"""
         user = await self.pg_session.get_user_by_id(user_id)
         if not user:
             raise exceptions.UserNotFoundException

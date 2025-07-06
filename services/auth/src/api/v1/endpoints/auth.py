@@ -49,7 +49,7 @@ async def login(
     '/logout',
     status_code=status.HTTP_200_OK,
     response_model=dict,
-    description="""Деаутентификация пользовтаеля из системы\n
+    description="""Деаутентификация пользователя из системы\n
     Разрешения: Только аутентифицированные пользователи"""
 )
 async def logout(

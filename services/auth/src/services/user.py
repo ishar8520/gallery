@@ -19,6 +19,7 @@ class UserService:
         self.pg_session = postgres
 
     async def get_register(self, request_model: RequestRegistration) -> UUID:
+        """Регистрация нового пользователя"""
         try:
             user = await self.pg_session.get_user_by_username(request_model.username)
             if user:
@@ -39,6 +40,7 @@ class UserService:
         return user_id
         
     async def get_user(self, user_id: UUID) -> ResponseUser:
+        """Получение данных из БД о пользователе"""
         user = await self.pg_session.get_user_by_id(user_id)
         if not user:
             raise exceptions.UserNotFoundException
@@ -48,12 +50,14 @@ class UserService:
             email=user.email)
 
     async def delete_user(self, user_id: UUID) -> None:
+        """Удаление пользователя из БД"""
         user = await self.pg_session.get_user_by_id(user_id)
         if not user:
             raise exceptions.UserNotFoundException
         return await self.pg_session.delete_user(user_id)
     
     async def patch_user(self, user_id: UUID, user_update: RequestPatchUser) -> UUID:
+        """Обновление данные о пользователе в БД"""
         user = await self.pg_session.get_user_by_id(user_id)
         if not user:
             raise exceptions.UserNotFoundException
@@ -65,6 +69,7 @@ class UserService:
         return await self.pg_session.add_user(user)
 
     async def check_exist_user(self, current_user: User, update_user: RequestPatchUser) -> bool:
+        """Проверка существания пользователя в БД"""
         for field, value in update_user:
             if field == 'username' and value != current_user.username:
                 user = await self.pg_session.get_user_by_username(value)
