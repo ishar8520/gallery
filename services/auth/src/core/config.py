@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class PostgresConfig(BaseSettings):
     model_config = SettingsConfigDict(env_prefix='postgresql_')
 
@@ -31,7 +32,10 @@ class JWTConfig(BaseSettings):
     authjwt_secret_key: str
     authjwt_token_location: set = {"cookies"}
     authjwt_cookie_csrf_protect: bool = False
-    
+    access_expires_seconds: int
+    refresh_expires_seconds: int
+
+
 class Settings(BaseSettings):
     postgres: PostgresConfig = PostgresConfig()
     redis: RedisConfig = RedisConfig()
