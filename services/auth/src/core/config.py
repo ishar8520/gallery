@@ -32,21 +32,12 @@ class JWTConfig(BaseSettings):
     authjwt_secret_key: str
     authjwt_token_location: set = {"cookies"}
     authjwt_cookie_csrf_protect: bool = False
-    
-    
-class AdminConfig(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix='auth_superuser_')
-    
-    username: str
-    password: str
-    email: str
 
 
 class Settings(BaseSettings):
     postgres: PostgresConfig = PostgresConfig()
     redis: RedisConfig = RedisConfig()
     jwt: JWTConfig = JWTConfig()
-    admin: AdminConfig = AdminConfig()
 
 
 settings = Settings()

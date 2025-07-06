@@ -10,8 +10,11 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 from hashlib import sha256
+from datetime import datetime, timezone
+import uuid
 
 from src.core.superuser import admin
+from src.models.enums import Roles
 
 
 # revision identifiers, used by Alembic.
@@ -23,15 +26,50 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
+    bind = op.get_bind()
+
+    stmt = sa.text("SELECT id FROM auth.roles WHERE role = :role")
+    result = bind.execute(
+            stmt,
+            {"role": Roles.ADMIN}
+        ).fetchone()
+    role_id = result[0]
+
+
     password = sha256(admin.password.encode('utf-8')).hexdigest()
-    stmt = (f"""
+    user_id = uuid.uuid4()
+    stmt = sa.text(f"""
         INSERT INTO auth.users (id, username, password, email, created_at, updated_at)
-        VALUES (gen_random_uuid(), '{admin.username}', '{password}', '{admin.email}', now(), now())""")
-    op.execute(stmt)
-    stmt = (f"""
-            SELECT """)
+        VALUES (:id, :username, :password, :email, :created_at, :updated_at)""")
+
+    bind.execute(
+        stmt,
+        {
+            'id': user_id,
+            'username': admin.username,
+            'password': password,
+            'email': admin.email,
+            'created_at': datetime.now(timezone.utc),
+            'updated_at': datetime.now(timezone.utc)
+        }
+    )
+
+    stmt = sa.text(f"""
+        INSERT INTO auth.users_roles (id, user_id, role_id, created_at, updated_at)
+        VALUES (:id, :user_id, :role_id, :created_at, :updated_at)""")
+    bind.execute(
+        stmt,
+        {
+            "id": uuid.uuid4(),
+            "user_id": user_id,
+            "role_id": role_id,
+            "created_at": datetime.now(timezone.utc),
+            "updated_at": datetime.now(timezone.utc)
+        }
+    )
+
 
 def downgrade() -> None:
     """Downgrade schema."""
     op.execute(f"""
-               DELETE FROM auth.users WHERE username='admin'""")
+               DELETE FROM auth.users WHERE username={admin.username}""")

@@ -42,9 +42,10 @@ class AuthService:
             raise exceptions.BadCredsException
         roles = await self.pg_session.get_user_roles(user.id)
         claim = {'email': user.email,
+                'username': user.username,
                 'user_id': str(user.id),
                 'roles': roles}
-        access_token, refresh_token = await self.get_tokens(user.username, user.id, claim)
+        access_token, refresh_token = await self.get_tokens(user.id, claim)
         return ResponseLogin(
             access_token=access_token,
             refresh_token=refresh_token)
@@ -82,17 +83,17 @@ class AuthService:
 
     async def get_tokens(self, user_id: UUID, claim: dict):
         access_token = await self.jwt.create_access_token(
-            subject=user_id, user_claims=claim)
+            subject=str(user_id), user_claims=claim)
         refresh_token = await self.jwt.create_refresh_token(
-            subject=user_id, user_claims=claim)
+            subject=str(user_id), user_claims=claim)
         await self.jwt.set_access_cookies(access_token)
         await self.jwt.set_refresh_cookies(refresh_token)
         expires = timedelta(hours=1)
-        await self.redis_session.set_value(f'token:access:{user_id}',
+        await self.redis_session.set_value(f'token:access:{str(user_id)}',
                                            access_token,
                                            int(expires.total_seconds()))
         expires = timedelta(days=7)
-        await self.redis_session.set_value(f'token:refresh:{user_id}',
+        await self.redis_session.set_value(f'token:refresh:{str(user_id)}',
                                            refresh_token,
                                            int(expires.total_seconds()))
         return access_token, refresh_token
