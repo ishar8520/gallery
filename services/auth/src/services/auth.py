@@ -64,38 +64,39 @@ class AuthService:
             username=claim['username'],
             email=claim['email'],
             roles=claim['roles'])         
-
-    async def get_update_token(self, user_id: UUID) -> ResponseLogin:
-        user = await self.pg_session.get_user_by_id(user_id)
-        roles = await self.pg_session.get_user_roles(user_id)
-        claim = {'username': user.username,
-                 'email': user.email,
-                 'user_id': str(user_id),
-                 'roles': roles}
-        access_token, refresh_token = await self.get_tokens(user.id, claim)
-        return ResponseLogin(
-            access_token=access_token,
-            refresh_token=refresh_token)
         
-    async def get_refresh(self, refresh_token: str):
-        claim = await self.jwt.get_raw_jwt()
+    async def get_refresh(self):
         user_id = await self.jwt.get_jwt_subject()
-
-    async def get_tokens(self, user_id: UUID, claim: dict):
+        user = await self.pg_session.get_user_by_id(user_id)
+        roles = await self.pg_session.get_user_roles(user.id)
+        claim = {'email': user.email,
+                'username': user.username,
+                'user_id': str(user.id),
+                'roles': roles}
         access_token = await self.jwt.create_access_token(
             subject=str(user_id), user_claims=claim)
+        await self.jwt.set_access_cookies(access_token)
+        expires = settings.jwt.access_expires_seconds
+        await self.redis_session.set_value(f'token:access:{str(user_id)}',
+                                            access_token,
+                                            expires)
+        return access_token
+    
+    async def get_tokens(self, user_id: UUID, claim: dict):
+        access_token = await self.jwt.create_access_token(
+            subject=str(user_id), 
+            user_claims=claim)
         refresh_token = await self.jwt.create_refresh_token(
-            subject=str(user_id), user_claims=claim)
+            subject=str(user_id))
         await self.jwt.set_access_cookies(access_token)
         await self.jwt.set_refresh_cookies(refresh_token)
-        expires = timedelta(hours=1)
+        
         await self.redis_session.set_value(f'token:access:{str(user_id)}',
                                            access_token,
-                                           int(expires.total_seconds()))
-        expires = timedelta(days=7)
+                                           expires=int(settings.jwt.access_expires_seconds))
         await self.redis_session.set_value(f'token:refresh:{str(user_id)}',
                                            refresh_token,
-                                           int(expires.total_seconds()))
+                                           expires=int(settings.jwt.refresh_expires_seconds))
         return access_token, refresh_token
 
     async def check_role(self, role: str):

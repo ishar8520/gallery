@@ -32,6 +32,8 @@ class JWTConfig(BaseSettings):
     authjwt_secret_key: str
     authjwt_token_location: set = {"cookies"}
     authjwt_cookie_csrf_protect: bool = False
+    access_expires_seconds: int
+    refresh_expires_seconds: int
 
 
 class Settings(BaseSettings):

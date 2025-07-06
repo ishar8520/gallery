@@ -14,6 +14,9 @@ class RedisDep:
             self.session = Redis(connection_pool=redis_pool)
         except Exception:
             raise
+
+    def get_value(self, key: str):
+        return self.session.get(key)
     
     def set_value(self, key: str, value: str, expires: int):
         return self.session.set(key, value, expires)

@@ -88,7 +88,7 @@ async def patch_user(
     try:
         await auth.jwt_required()
         await user_service.patch_user(user_id=user_id, user_update=user_update)
-        await auth_service.get_update_token(user_id=user_id)
+        await auth_service.get_refresh()
     except exceptions.UserNotFoundException:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='User not found')

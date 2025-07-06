@@ -83,3 +83,20 @@ async def me(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Not authorized')
     return user_data
+
+@router.post(
+    '/refresh',
+    status_code=status.HTTP_200_OK,
+    response_model=dict
+)
+async def refresh(
+    service: Annotated[AuthService, Depends(get_auth_service)],
+    auth: Annotated[AuthJWT, Depends(auth_jwt_dep)]
+):
+    try:
+        await auth.jwt_refresh_token_required()
+        access_token = await service.get_refresh()
+    except (JWTDecodeError, InvalidHeaderError, MissingTokenError):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Not authorized')
+    return {'access_token': access_token}
