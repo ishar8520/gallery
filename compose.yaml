@@ -92,6 +92,8 @@ services:
       - MINIO_PORT=9000
       - MINIO_USER=$MINIO_USER
       - MINIO_PASSWORD=$MINIO_PASSWORD
+      - AUTH_SERVICE_HOST=$AUTH_SERVICE_HOST
+      - AUTH_SERVICE_PORT=$AUTH_SERVICE_PORT
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:8000/api/v1/_healthcheck"]
       interval: 30s

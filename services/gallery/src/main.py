@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from src.api.v1.endpoints import gallery
+from src.api.v1.endpoints import gallery, user
 
 app = FastAPI(
     title='Gallery service',
@@ -15,5 +15,9 @@ async def healthcheck():
 
 app.include_router(
     router=gallery.router,
-    tags=['Main']
+    tags=['main']
+)
+app.include_router(
+    router=user.router,
+    tags=['user']
 )
