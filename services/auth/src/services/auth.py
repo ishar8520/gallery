@@ -46,7 +46,7 @@ class AuthService:
                 'username': user.username,
                 'user_id': str(user.id),
                 'roles': roles}
-        access_token, refresh_token = await self.get_tokens(user.id, claim)
+        access_token, refresh_token = await self.create_tokens(user.id, claim)
         return ResponseLogin(
             access_token=access_token,
             refresh_token=refresh_token)
@@ -86,7 +86,7 @@ class AuthService:
                                             expires)
         return access_token
     
-    async def get_tokens(self, user_id: UUID, claim: dict):
+    async def create_tokens(self, user_id: UUID, claim: dict):
         """Создание JWT-access и JWT-refresh"""
         access_token = await self.jwt.create_access_token(
             subject=str(user_id), 

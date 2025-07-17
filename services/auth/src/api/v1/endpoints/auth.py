@@ -41,7 +41,7 @@ async def login(
         token = await service.get_login(request_model)
     except exceptions.BadCredsException:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail='Wrong username or password')
+                            detail='Wrong username or password')  
     return token
 
 
