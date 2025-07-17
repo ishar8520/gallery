@@ -1,6 +1,7 @@
 from typing import Annotated
 from fastapi import Depends
 import httpx
+from async_fastapi_jwt_auth import AuthJWT
 from async_fastapi_jwt_auth.auth_jwt import AuthJWTBearer
 
 from src.dependences.httpx import get_httpx_client
@@ -22,8 +23,8 @@ class AuthDepends:
         try:
             response = await self.httpx_client.get(
                 url=f'http://{settings.auth.host}:{settings.auth.port}/auth/api/v1/me',
-                headers={"accept": "application/json", "Authorization": f"Bearer {self.token}"})
-        except httpx.HTTPStatusError as err:
+                headers={'accept': 'application/json', 'Authorization': self.token})
+        except httpx.HTTPStatusError:
             raise UnauthorizedException()
         return response.json()
 
