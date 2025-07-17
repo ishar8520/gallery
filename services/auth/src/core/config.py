@@ -30,7 +30,7 @@ class JWTConfig(BaseSettings):
     model_config = SettingsConfigDict(env_prefix='jwt_')
     
     authjwt_secret_key: str
-    authjwt_token_location: set = {"cookies"}
+    authjwt_token_location: set = {"cookies", "headers"}
     authjwt_cookie_csrf_protect: bool = False
     access_expires_seconds: int
     refresh_expires_seconds: int
