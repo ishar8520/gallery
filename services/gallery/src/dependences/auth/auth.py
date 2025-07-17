@@ -5,8 +5,8 @@ from async_fastapi_jwt_auth import AuthJWT
 from async_fastapi_jwt_auth.auth_jwt import AuthJWTBearer
 
 from src.dependences.httpx import get_httpx_client
-from src.dependences.auth_exceptions import UnauthorizedException
-from src.dependences.token import TokenDep
+from src.dependences.auth.exceptions import UnauthorizedException
+from src.dependences.auth.token import TokenDep
 from src.core.config import settings
 
 auth_jwt_dep = AuthJWTBearer()

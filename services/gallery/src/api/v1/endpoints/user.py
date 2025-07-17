@@ -1,8 +1,8 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, status, HTTPException
 
-from src.dependences.auth import AuthJWT, auth_jwt_dep, AuthDepends, get_auth_dep
-from src.dependences.auth_exceptions import UnauthorizedException
+from src.dependences.auth.auth import AuthJWT, auth_jwt_dep, AuthDepends, get_auth_dep
+from src.dependences.auth.exceptions import UnauthorizedException
 
 router = APIRouter()
 
