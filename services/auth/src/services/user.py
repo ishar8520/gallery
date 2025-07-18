@@ -2,7 +2,7 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
-from hashlib import sha256
+import bcrypt
 
 from src.dependences.postgres import get_async_postgres, PostgresDep
 from src.services import exceptions
@@ -30,9 +30,13 @@ class UserService:
         except (exceptions.UsernameExistException, exceptions.EmailExistException):
             raise exceptions.UserExistException
         role = await self.pg_session.get_role(Roles.USER)
-        password = sha256(request_model.password.encode('utf-8')).hexdigest()
+        
+        password = request_model.password.encode('utf-8')
+        salt = bcrypt.gensalt()
+        hashed_password = bcrypt.hashpw(password, salt)
+        
         user = User(username=request_model.username,
-                    password=password,
+                    password=hashed_password.decode('utf-8'),
                     email=request_model.email)
         user_role = UserRoles(user=user, role=role)
         user_id = await self.pg_session.add_user(user)
