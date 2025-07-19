@@ -2,7 +2,8 @@ from typing import Annotated
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
-from hashlib import sha256
+import bcrypt
+import re
 
 from src.dependences.postgres import get_async_postgres, PostgresDep
 from src.services import exceptions
@@ -29,10 +30,17 @@ class UserService:
                 raise exceptions.EmailExistException
         except (exceptions.UsernameExistException, exceptions.EmailExistException):
             raise exceptions.UserExistException
+        if not self.is_valid_email(request_model.email):
+            raise exceptions.BadEmailException
+        
         role = await self.pg_session.get_role(Roles.USER)
-        password = sha256(request_model.password.encode('utf-8')).hexdigest()
+        
+        password = request_model.password.encode('utf-8')
+        salt = bcrypt.gensalt()
+        hashed_password = bcrypt.hashpw(password, salt)
+        
         user = User(username=request_model.username,
-                    password=password,
+                    password=hashed_password.decode('utf-8'),
                     email=request_model.email)
         user_role = UserRoles(user=user, role=role)
         user_id = await self.pg_session.add_user(user)
@@ -80,7 +88,10 @@ class UserService:
                 if email:
                     raise exceptions.EmailExistException
         return True
-        
+
+    def is_valid_email(self, email):
+        pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        return bool(re.fullmatch(pattern, email))
 
 def get_user_service(
     pg_dep: Annotated[AsyncSession, Depends(get_async_postgres)],

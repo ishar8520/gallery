@@ -4,7 +4,7 @@ from async_fastapi_jwt_auth.auth_jwt import AuthJWTBearer
 from fastapi import Depends
 from datetime import timedelta
 from typing import Annotated
-from hashlib import sha256
+import bcrypt 
 from uuid import UUID
 
 from src.core.config import settings
@@ -39,7 +39,8 @@ class AuthService:
     async def get_login(self, request_model: RequestLogin) -> ResponseLogin:
         """Аутентификация пользователя"""
         user = await self.pg_session.get_user_by_username(request_model.username)
-        if not user or not user.password == sha256(request_model.password.encode('utf-8')).hexdigest():
+        if not user or not bcrypt.checkpw(request_model.password.encode('utf-8'),
+                                          user.password.encode('utf-8')):
             raise exceptions.BadCredsException
         roles = await self.pg_session.get_user_roles(user.id)
         claim = {'email': user.email,
@@ -111,6 +112,11 @@ class AuthService:
             raise exceptions.BadPermissionsException
         return True
 
+    def get_password(src_password: str):
+        password = src_password.encode('utf-8')
+        salt = bcrypt.gensalt()
+        hashed_password = bcrypt.hashpw(password, salt)
+        return hashed_password
 
 def get_auth_service(
     pg_dep: Annotated[AsyncSession, Depends(get_async_postgres)],

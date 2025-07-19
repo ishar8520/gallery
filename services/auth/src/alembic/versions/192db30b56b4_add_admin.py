@@ -9,7 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
-from hashlib import sha256
+import bcrypt
 from datetime import datetime, timezone
 import uuid
 
@@ -36,7 +36,9 @@ def upgrade() -> None:
     role_id = result[0]
 
 
-    password = sha256(admin.password.encode('utf-8')).hexdigest()
+    password = admin.password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed_password = bcrypt.hashpw(password, salt)
     user_id = uuid.uuid4()
     stmt = sa.text(f"""
         INSERT INTO auth.users (id, username, password, email, created_at, updated_at)
@@ -47,7 +49,7 @@ def upgrade() -> None:
         {
             'id': user_id,
             'username': admin.username,
-            'password': password,
+            'password': hashed_password.decode('utf-8'),
             'email': admin.email,
             'created_at': datetime.now(timezone.utc),
             'updated_at': datetime.now(timezone.utc)
