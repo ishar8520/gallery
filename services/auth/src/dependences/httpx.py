@@ -1,5 +1,6 @@
-import httpx
 from collections.abc import AsyncGenerator
+
+import httpx
 
 
 async def get_httpx_client() -> AsyncGenerator[httpx.AsyncClient]:

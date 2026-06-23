@@ -1,14 +1,14 @@
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import selectinload
 import uuid
-
-from sqlalchemy import select, delete
 from collections.abc import AsyncGenerator
 
+from sqlalchemy import delete, select
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.orm import selectinload
+
 from src.core.config import settings
-from src.models.user import User, Role, UserRoles
 from src.models.enums import Roles
+from src.models.user import Role, User, UserRoles
 
 engine = create_async_engine(settings.postgres.url)
 async_session_maker = async_sessionmaker(bind=engine, class_=AsyncSession)
@@ -16,7 +16,7 @@ async_session_maker = async_sessionmaker(bind=engine, class_=AsyncSession)
 
 class PostgresDep:
     session: AsyncSession
-    
+
     def __init__(self, session):
         try:
             self.session = session
@@ -31,7 +31,7 @@ class PostgresDep:
             return user.id
         except SQLAlchemyError:
             return await self.session.rollback()
-    
+
     async def add_user_role(self, role: Role):
         try:
             self.session.add(role)
@@ -39,7 +39,7 @@ class PostgresDep:
             return await self.session.refresh(role)
         except SQLAlchemyError:
             return await self.session.rollback()
- 
+
     async def delete_user(self, user_id: uuid.UUID):
         try:
             stmt = (
@@ -49,8 +49,8 @@ class PostgresDep:
             await self.session.execute(stmt)
             return await self.session.commit()
         except SQLAlchemyError:
-            return await self.session.rollback() 
-    
+            return await self.session.rollback()
+
     async def delete_user_role(self, user: User, role: Role):
         try:
             stmt = (
@@ -59,10 +59,10 @@ class PostgresDep:
                 .where(UserRoles.role==role)
             )
             await self.session.execute(stmt)
-            return await self.session.commit() 
+            return await self.session.commit()
         except SQLAlchemyError:
             return await self.session.rollback()
-   
+
     async def get_user_by_username(self, username: str):
         stmt = (
             select(User)
@@ -70,7 +70,7 @@ class PostgresDep:
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
-    
+
     async def get_user_by_id(self, user_id: uuid.UUID):
         stmt = (
             select(User)
@@ -78,7 +78,7 @@ class PostgresDep:
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
-    
+
     async def get_user_by_email(self, email: str):
         stmt = (
             select(User)
@@ -86,7 +86,7 @@ class PostgresDep:
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
-    
+
     async def get_user_roles(self, user_id: uuid.UUID):
         stmt = (
             select(User)

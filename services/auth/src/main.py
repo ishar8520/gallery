@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from src.api.v1.endpoints import auth, registration, user, role
+from src.api.v1.endpoints import auth, registration, role, user
 
 base_url_prefix = '/auth'
 

@@ -1,6 +1,6 @@
-from pydantic import BaseModel
-from typing import List
 import uuid
+
+from pydantic import BaseModel
 
 
 class RequestLogin(BaseModel):
@@ -17,4 +17,4 @@ class ResponseMe(BaseModel):
     user_id: uuid.UUID
     username: str
     email: str
-    roles: List[str]
+    roles: list[str]

@@ -1,20 +1,12 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends, HTTPException, status
+
 from async_fastapi_jwt_auth import AuthJWT
-from async_fastapi_jwt_auth.exceptions import (
-    JWTDecodeError,
-    MissingTokenError,
-    InvalidHeaderError
-)
+from async_fastapi_jwt_auth.exceptions import InvalidHeaderError, JWTDecodeError, MissingTokenError
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.api.v1.models.auth import (
-    RequestLogin,
-    ResponseLogin,
-    ResponseMe
-)
-from src.services.auth import get_auth_service, auth_jwt_dep, AuthService
+from src.api.v1.models.auth import RequestLogin, ResponseLogin, ResponseMe
 from src.services import exceptions
-
+from src.services.auth import AuthService, auth_jwt_dep, get_auth_service
 
 router = APIRouter()
 
@@ -41,7 +33,7 @@ async def login(
         token = await service.get_login(request_model)
     except exceptions.BadCredsException:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
-                            detail='Wrong username or password')  
+                            detail='Wrong username or password')
     return token
 
 

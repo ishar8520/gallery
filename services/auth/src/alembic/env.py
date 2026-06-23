@@ -1,13 +1,12 @@
-from logging.config import fileConfig
 import asyncio
+from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool, text
+from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
-
+from src.core.config import settings
 from src.models.user import auth_metadata_obj
 
 # this is the Alembic Config object, which provides
@@ -29,7 +28,6 @@ target_metadata = [auth_metadata_obj]
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
-from src.core.config import settings
 url = settings.postgres.url
 
 # url ='postgresql+asyncpg://user:password@localhost:5432/db'
@@ -46,7 +44,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    
+
     context.configure(
         url=url,
         include_schemas=True,

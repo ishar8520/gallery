@@ -1,19 +1,20 @@
+import uuid
 from typing import Annotated
+
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-import uuid
 
-from src.services import exceptions
 from src.dependences.postgres import PostgresDep, get_async_postgres
 from src.models.enums import Roles
 from src.models.user import UserRoles
+from src.services import exceptions
 
 
 class RoleService:
     pg_session: PostgresDep
 
     def __init__(self, postgres):
-        self.pg_session=postgres
+        self.pg_session = postgres
 
     async def add_user_role(self, user_id: uuid.UUID, role: Roles) -> UserRoles:
         """Добавление пользователю новой роли"""
@@ -25,7 +26,6 @@ class RoleService:
             raise exceptions.RoleExistException
         role = await self.pg_session.get_role(role)
         user_role = UserRoles(user=user, role=role)
-        user_id = await self.pg_session.add_user(user)
         return await self.pg_session.add_user_role(user_role)
 
     async def get_user_role(self, user_id: uuid.UUID) -> UserRoles:
@@ -46,7 +46,7 @@ class RoleService:
             raise exceptions.RoleNotFoundException
         role = await self.pg_session.get_role(role)
         return await self.pg_session.delete_user_role(user, role)
-        
+
 
 async def get_role_service(
     pg_dep: Annotated[AsyncSession, Depends(get_async_postgres)],

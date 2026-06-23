@@ -1,22 +1,17 @@
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Annotated
+from uuid import UUID
+
+import bcrypt
 from async_fastapi_jwt_auth import AuthJWT
 from async_fastapi_jwt_auth.auth_jwt import AuthJWTBearer
 from fastapi import Depends
-from datetime import timedelta
-from typing import Annotated
-import bcrypt 
-from uuid import UUID
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.api.v1.models.auth import RequestLogin, ResponseLogin, ResponseMe
 from src.core.config import settings
-from src.dependences.postgres import get_async_postgres, PostgresDep
-from src.dependences.redis import get_async_redis, RedisDep
-from src.api.v1.models.auth import (
-    RequestLogin,
-    ResponseLogin,
-    ResponseMe
-)
-from src.services import exceptions 
-
+from src.dependences.postgres import PostgresDep, get_async_postgres
+from src.dependences.redis import RedisDep, get_async_redis
+from src.services import exceptions
 
 auth_jwt_dep = AuthJWTBearer()
 
@@ -67,8 +62,8 @@ class AuthService:
             user_id=user_id,
             username=claim['username'],
             email=claim['email'],
-            roles=claim['roles'])         
-        
+            roles=claim['roles'])
+
     async def get_refresh(self):
         """Обновление JWT-access"""
         user_id = await self.jwt.get_jwt_subject()
@@ -86,17 +81,17 @@ class AuthService:
                                             access_token,
                                             expires)
         return access_token
-    
+
     async def create_tokens(self, user_id: UUID, claim: dict):
         """Создание JWT-access и JWT-refresh"""
         access_token = await self.jwt.create_access_token(
-            subject=str(user_id), 
+            subject=str(user_id),
             user_claims=claim)
         refresh_token = await self.jwt.create_refresh_token(
             subject=str(user_id))
         await self.jwt.set_access_cookies(access_token)
         await self.jwt.set_refresh_cookies(refresh_token)
-        
+
         await self.redis_session.set_value(f'token:access:{str(user_id)}',
                                            access_token,
                                            expires=int(settings.jwt.access_expires_seconds))
@@ -108,15 +103,9 @@ class AuthService:
     async def check_role(self, role: str):
         """Проверка наличия роли у текущего пользователя"""
         user = await self.get_me()
-        if not role in user.roles:
+        if role not in user.roles:
             raise exceptions.BadPermissionsException
         return True
-
-    def get_password(src_password: str):
-        password = src_password.encode('utf-8')
-        salt = bcrypt.gensalt()
-        hashed_password = bcrypt.hashpw(password, salt)
-        return hashed_password
 
 def get_auth_service(
     pg_dep: Annotated[AsyncSession, Depends(get_async_postgres)],
