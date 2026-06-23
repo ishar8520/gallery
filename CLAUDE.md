@@ -9,15 +9,41 @@
 |---|---|---|---|
 | auth | `services/auth` | FastAPI, SQLAlchemy 2.0 (async), PostgreSQL, Redis, Alembic | разобран и поправлен (см. ниже) |
 | gallery | `services/gallery` | FastAPI (предположительно, есть Dockerfile + poetry) | не разбирался |
-| nginx | `services/nginx` | reverse proxy перед auth/gallery | не разбирался |
-| minio | `services/minio` | S3-совместимое хранилище фото | не разбирался |
+| nginx | `services/nginx` | reverse proxy перед auth/gallery | не разбирался (кроме базового образа, см. ниже) |
+| minio | `services/minio` | S3-совместимое хранилище фото | не разбирался (кроме базового образа, см. ниже) |
 
-Разбор и доработка сервисов идёт по очереди. Сейчас приведён в порядок только **auth**.
-gallery/nginx/minio — следующие в очереди, контекст по ним пока не собран.
+Разбор и доработка сервисов идёт по очереди. Сейчас приведён в порядок только **auth**
+(код, тесты, CI). gallery/nginx/minio по содержимому — следующие в очереди, контекст по
+их прикладному коду/конфигу пока не собран.
 
-> Замена базовых Docker-образов (Bitnami → официальные для postgres/redis/nginx/minio)
-> сделана отдельным PR/веткой (`infra/replace-bitnami-images`), не входит в эту ветку —
-> см. её описание/CLAUDE.md после мерджа.
+### Базовые образы — отказ от Bitnami (2026-06-23, смержено: PR #9 `infra/replace-bitnami-images`)
+
+Все четыре инфраструктурных образа были на `bitnami/*` (postgresql, redis, nginx, minio).
+После покупки Bitnami Broadcom'ом большинство тегов перестали свободно тянуться с Docker Hub.
+Заменено на официальные образы в `compose.yaml` / `services/nginx/Dockerfile` / `services/minio/Dockerfile`:
+
+| Было | Стало | Что изменилось |
+|---|---|---|
+| `bitnami/postgresql:17` | `postgres:17` | env `POSTGRESQL_USERNAME/PASSWORD/DATABASE` → `POSTGRES_USER/PASSWORD/DB`; volume `/bitnami/postgresql` → `/var/lib/postgresql/data` |
+| `bitnami/redis:8.0` | `redis:8.0` | `ALLOW_EMPTY_PASSWORD=yes` убран (без пароля — поведение по умолчанию); `command` теперь `redis-server --maxmemory ...` вместо bitnami-скрипта; volume `/bitnami/redis/data` → `/data` |
+| `bitnami/nginx:latest` (build) | `nginx:1.27-alpine` (build) | конфиг копируется в `/etc/nginx/conf.d/` вместо `/opt/bitnami/nginx/conf/server_blocks`; стоковый `default.conf` удаляется в Dockerfile; volume логов `/opt/bitnami/nginx/logs` → `/var/log/nginx` |
+| `bitnami/minio:latest` (build) | `minio/minio:latest` (build, официальный от самого MinIO) | добавлен явный `CMD ["server", "/data", "--console-address", ":9001"]` — у официального образа, в отличие от bitnami, нет автозапуска без аргументов |
+
+**Важная особенность nginx:** у официального образа `access.log`/`error.log` по умолчанию —
+симлинки на `/dev/stdout`/`/dev/stderr`, а не обычные файлы. Volume `nginx-logs-data` всё ещё
+примонтирован на `/var/log/nginx`, но реальные логи теперь смотреть через `docker logs nginx`,
+а не через файлы в volume.
+
+Все 4 образа проверены вживую (`docker build` + `docker run`/`docker compose config`) —
+тянутся, стартуют, health-check'и (`pg_isready`, `redis-cli ping`, `/minio/health/live`,
+`nginx -t`) проходят. `.env.sample` не менялся — это имена переменных в корневом `.env`,
+они не привязаны к именам env-переменных самих контейнеров.
+
+**Известный пробел:** для этой замены нет автоматического CI-чека — `.github/workflows/auth-ci.yml`
+триггерится только на `services/auth/**` и не покрывает `compose.yaml`/`nginx`/`minio`. Проверка была
+только ручной (см. выше). Если правки в эту область будут продолжаться — стоит завести отдельный
+workflow с собственным path-фильтром (например `compose.yaml`, `services/nginx/**`, `services/minio/**`),
+аналогично `auth-ci.yml`.
 
 ## Auth-service
 
@@ -29,7 +55,7 @@ bcrypt напрямую (без passlib). Зависимости и сборка
 Управление пользователем: регистрация, login/logout, access+refresh JWT (cookie + header),
 роли USER/ADMIN, бутстрап суперюзера через Alembic-миграцию.
 
-### Сделано в ходе ревью ветки `feature/auth-service` (2026-06-23)
+### Сделано в ходе ревью ветки `feature/auth-service` (2026-06-23, смержено: PR #8 `fix/auth-service-review`)
 
 Полный список находок и обоснование — см. историю диалога/PR. Кратко:
 
@@ -114,6 +140,11 @@ poetry run ruff check .
 Триггеры: `pull_request` в `main` и `push` в `feature/**`, только при изменениях внутри
 `services/auth/**` или самого workflow-файла. При появлении gallery/nginx/minio CI — заводить
 по аналогии отдельным workflow-файлом с собственным path-фильтром, не расширять этот.
+
+**Известная неточность:** реальные ветки в этом репозитории называются `fix/...`, `infra/...`
+(а не только `feature/...`), так что триггер `push: branches: ['feature/**']` их не покрывает —
+сработал только `pull_request`-триггер при открытии PR #8. Если хотите гонять CI на каждый push
+в произвольную рабочую ветку (не только при открытом PR) — паттерн нужно расширить.
 
 ## Соглашения по работе
 
