@@ -1,3 +1,5 @@
-FROM bitnami/nginx:latest
+FROM nginx:1.27-alpine
 
-COPY ./conf/ /opt/bitnami/nginx/conf/server_blocks
+RUN rm -f /etc/nginx/conf.d/default.conf
+
+COPY ./conf/ /etc/nginx/conf.d/
