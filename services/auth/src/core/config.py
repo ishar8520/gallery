@@ -13,7 +13,7 @@ class PostgresConfig(BaseSettings):
     @property
     def url(self):
         return f'postgresql+asyncpg://{self.username}:{self.password}@{self.host}:{self.port}/{self.database}'
-    
+
 
 class RedisConfig(BaseSettings):
     model_config = SettingsConfigDict(env_prefix='redis_')
@@ -28,7 +28,7 @@ class RedisConfig(BaseSettings):
 
 class JWTConfig(BaseSettings):
     model_config = SettingsConfigDict(env_prefix='jwt_')
-    
+
     authjwt_secret_key: str
     authjwt_token_location: set = {"cookies", "headers"}
     authjwt_cookie_csrf_protect: bool = False

@@ -1,22 +1,17 @@
-from sqlalchemy.orm import (
-    DeclarativeBase,
-    Mapped,
-    mapped_column,
-    relationship
-)
+import uuid
+from datetime import UTC, datetime
+
 from sqlalchemy import (
     UUID,
-    String,
     DateTime,
-    MetaData,
-    ForeignKey,
     Enum,
+    ForeignKey,
+    MetaData,
+    String,
 )
-import uuid
-from datetime import datetime, timezone
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from src.models.enums import Roles
-
 
 auth_metadata_obj = MetaData(
     schema='auth',
@@ -42,36 +37,38 @@ class User(Base):
     password: Mapped[str] = mapped_column(String)
     email: Mapped[str] = mapped_column(String, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
-                                                 default=lambda: datetime.now(timezone.utc))
+                                                 default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
-                                                 default=lambda: datetime.now(timezone.utc),
-                                                 onupdate=lambda: datetime.now(timezone.utc))
+                                                 default=lambda: datetime.now(UTC),
+                                                 onupdate=lambda: datetime.now(UTC))
     user_roles: Mapped[list['UserRoles']] = relationship(back_populates='user')
 
 
 class Role(Base):
     __tablename__ = 'roles'
-    
+
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     role: Mapped[Roles] = mapped_column(Enum(Roles), unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
-                                                 default=lambda: datetime.now(timezone.utc))
+                                                 default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
-                                                 default=lambda: datetime.now(timezone.utc),
-                                                 onupdate=lambda: datetime.now(timezone.utc))
-    user_roles: Mapped[list['UserRoles']] = relationship(back_populates='role') 
+                                                 default=lambda: datetime.now(UTC),
+                                                 onupdate=lambda: datetime.now(UTC))
+    user_roles: Mapped[list['UserRoles']] = relationship(back_populates='role')
 
 
 class UserRoles(Base):
     __tablename__ = 'users_roles'
-    
+
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('auth.users.id', ondelete='CASCADE'))
-    role_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey('auth.roles.id', ondelete='CASCADE'))
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('auth.users.id', ondelete='CASCADE'))
+    role_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('auth.roles.id', ondelete='CASCADE'))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
-                                                 default=lambda: datetime.now(timezone.utc))
+                                                 default=lambda: datetime.now(UTC))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
-                                                 default=lambda: datetime.now(timezone.utc),
-                                                 onupdate=lambda: datetime.now(timezone.utc))
+                                                 default=lambda: datetime.now(UTC),
+                                                 onupdate=lambda: datetime.now(UTC))
     user: Mapped['User'] = relationship(back_populates='user_roles')
     role: Mapped['Role'] = relationship(back_populates='user_roles')

@@ -1,17 +1,13 @@
-from typing import Annotated
 import uuid
-from fastapi import APIRouter, Depends, status, HTTPException
-from async_fastapi_jwt_auth.exceptions import (
-    JWTDecodeError,
-    InvalidHeaderError,
-    MissingTokenError
-)
+from typing import Annotated
 
-from src.services.role import RoleService, get_role_service
-from src.services.auth import AuthJWT, auth_jwt_dep, AuthService, get_auth_service
-from src.services import exceptions
+from async_fastapi_jwt_auth.exceptions import InvalidHeaderError, JWTDecodeError, MissingTokenError
+from fastapi import APIRouter, Depends, HTTPException, status
+
 from src.models.enums import Roles
-
+from src.services import exceptions
+from src.services.auth import AuthJWT, AuthService, auth_jwt_dep, get_auth_service
+from src.services.role import RoleService, get_role_service
 
 router = APIRouter()
 
@@ -32,7 +28,7 @@ async def add_user_role(
 ):
     try:
         await auth.jwt_required()
-        await auth_service.check_role(Roles.ADMIN.value)
+        await auth_service.check_role(Roles.ADMIN)
         await role_service.add_user_role(user_id, role)
         await auth_service.get_refresh()
     except exceptions.UserNotFoundException:
@@ -43,7 +39,7 @@ async def add_user_role(
                             detail='User already have this role')
     except exceptions.BadPermissionsException:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail=f'Current user have not ADMIN role')
+                            detail='Current user does not have ADMIN role')
     except (JWTDecodeError, InvalidHeaderError, MissingTokenError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Not authorized')
@@ -68,7 +64,7 @@ async def get_user_role(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Not authorized')
     return {'user_id': user_id,
-            'roles': roles}  
+            'roles': roles}
 
 
 @router.delete(
@@ -87,7 +83,7 @@ async def delete_user_role(
 ):
     try:
         await auth.jwt_required()
-        await auth_service.check_role(Roles.ADMIN.value)
+        await auth_service.check_role(Roles.ADMIN)
         await role_service.delete_user_role(user_id, role)
         await auth_service.get_refresh()
     except exceptions.UserNotFoundException:
@@ -98,7 +94,7 @@ async def delete_user_role(
                             detail="User don't have this role")
     except exceptions.BadPermissionsException:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
-                            detail=f'Current user have not ADMIN role')
+                            detail='Current user does not have ADMIN role')
     except (JWTDecodeError, InvalidHeaderError, MissingTokenError):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Not authorized')

@@ -1,4 +1,4 @@
-FROM python:3.12-slim AS poerty_auth_builder
+FROM python:3.12-slim AS poetry_auth_builder
 
 ENV PYTHONBUFFERED=1
 
@@ -13,8 +13,8 @@ RUN poetry config virtualenvs.create false && \
 
 FROM python:3.12-slim AS base
 
-COPY --from=poerty_auth_builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
-COPY --from=poerty_auth_builder /usr/local/bin /usr/local/bin
+COPY --from=poetry_auth_builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=poetry_auth_builder /usr/local/bin /usr/local/bin
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl

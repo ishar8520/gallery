@@ -1,5 +1,5 @@
+
 from pydantic import BaseModel
-import uuid
 
 
 class RequestRegistration(BaseModel):

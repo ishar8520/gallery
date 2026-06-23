@@ -1,16 +1,17 @@
+import re
 from typing import Annotated
+from uuid import UUID
+
+import bcrypt
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
-import bcrypt
-import re
 
-from src.dependences.postgres import get_async_postgres, PostgresDep
-from src.services import exceptions
-from src.models.user import User, UserRoles
-from src.models.enums import Roles
 from src.api.v1.models.registration import RequestRegistration
-from src.api.v1.models.user import ResponseUser, RequestPatchUser
+from src.api.v1.models.user import RequestPatchUser, ResponseUser
+from src.dependences.postgres import PostgresDep, get_async_postgres
+from src.models.enums import Roles
+from src.models.user import User, UserRoles
+from src.services import exceptions
 
 
 class UserService:
@@ -32,13 +33,13 @@ class UserService:
             raise exceptions.UserExistException
         if not self.is_valid_email(request_model.email):
             raise exceptions.BadEmailException
-        
+
         role = await self.pg_session.get_role(Roles.USER)
-        
+
         password = request_model.password.encode('utf-8')
         salt = bcrypt.gensalt()
         hashed_password = bcrypt.hashpw(password, salt)
-        
+
         user = User(username=request_model.username,
                     password=hashed_password.decode('utf-8'),
                     email=request_model.email)
@@ -46,7 +47,7 @@ class UserService:
         user_id = await self.pg_session.add_user(user)
         await self.pg_session.add_user_role(user_role)
         return user_id
-        
+
     async def get_user(self, user_id: UUID) -> ResponseUser:
         """Получение данных из БД о пользователе"""
         user = await self.pg_session.get_user_by_id(user_id)
@@ -63,7 +64,7 @@ class UserService:
         if not user:
             raise exceptions.UserNotFoundException
         return await self.pg_session.delete_user(user_id)
-    
+
     async def patch_user(self, user_id: UUID, user_update: RequestPatchUser) -> UUID:
         """Обновление данные о пользователе в БД"""
         user = await self.pg_session.get_user_by_id(user_id)

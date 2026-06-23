@@ -1,0 +1,15 @@
+import os
+
+os.environ.setdefault("POSTGRESQL_USERNAME", "test")
+os.environ.setdefault("POSTGRESQL_PASSWORD", "test")
+os.environ.setdefault("POSTGRESQL_DATABASE", "test")
+os.environ.setdefault("POSTGRESQL_HOST", "localhost")
+os.environ.setdefault("POSTGRESQL_PORT", "5432")
+os.environ.setdefault("REDIS_HOST", "localhost")
+os.environ.setdefault("REDIS_PORT", "6379")
+os.environ.setdefault("JWT_AUTHJWT_SECRET_KEY", "test-secret")
+os.environ.setdefault("JWT_ACCESS_EXPIRES_SECONDS", "900")
+os.environ.setdefault("JWT_REFRESH_EXPIRES_SECONDS", "86400")
+os.environ.setdefault("AUTH_SUPERUSER_USERNAME", "admin")
+os.environ.setdefault("AUTH_SUPERUSER_PASSWORD", "admin-password")
+os.environ.setdefault("AUTH_SUPERUSER_EMAIL", "admin@example.com")

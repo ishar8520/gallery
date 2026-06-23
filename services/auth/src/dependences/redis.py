@@ -1,7 +1,6 @@
-from redis.asyncio import Redis, ConnectionPool
+from redis.asyncio import ConnectionPool, Redis
 
 from src.core.config import settings
-
 
 redis_pool = ConnectionPool.from_url(url=settings.redis.url, decode_responses=True)
 
@@ -17,12 +16,12 @@ class RedisDep:
 
     def get_value(self, key: str):
         return self.session.get(key)
-    
+
     def set_value(self, key: str, value: str, expires: int):
         return self.session.set(key, value, expires)
-        
+
     def drop_value(self, key: str):
         return self.session.delete(key)
-    
+
 async def get_async_redis() -> RedisDep:
     return RedisDep()
