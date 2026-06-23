@@ -8,7 +8,7 @@ services:
     ports:
       - '8000:8080'
     volumes:
-      - 'nginx-logs-data:/opt/bitnami/nginx/logs'
+      - 'nginx-logs-data:/var/log/nginx'
     depends_on:
       auth-service:
         condition: service_healthy
@@ -47,15 +47,15 @@ services:
 
   auth-postgres:
     container_name: auth-postgres
-    image: bitnami/postgresql:17
+    image: postgres:17
     networks:
       - gallery-network
     volumes:
-      - 'auth-postgres-data:/bitnami/postgresql'
+      - 'auth-postgres-data:/var/lib/postgresql/data'
     environment:
-      - POSTGRESQL_USERNAME=$AUTH_POSTGRESQL_USERNAME
-      - POSTGRESQL_PASSWORD=$AUTH_POSTGRESQL_PASSWORD
-      - POSTGRESQL_DATABASE=$AUTH_POSTGRESQL_DATABASE
+      - POSTGRES_USER=$AUTH_POSTGRESQL_USERNAME
+      - POSTGRES_PASSWORD=$AUTH_POSTGRESQL_PASSWORD
+      - POSTGRES_DB=$AUTH_POSTGRESQL_DATABASE
     healthcheck:
       test: ["CMD-SHELL", "pg_isready --username=$AUTH_POSTGRESQL_USERNAME --dbname=$AUTH_POSTGRESQL_DATABASE"]
       interval: 10s
@@ -65,14 +65,12 @@ services:
 
   auth-redis:
     container_name: auth-redis
-    image: bitnami/redis:8.0
+    image: redis:8.0
     networks:
       - gallery-network
     volumes:
-      - 'auth-redis-data:/bitnami/redis/data'
-    environment:
-      - ALLOW_EMPTY_PASSWORD=yes
-    command: [ '/opt/bitnami/scripts/redis/run.sh', '--maxmemory', '${REDIS_MAXMEMORY:-200mb}' ]
+      - 'auth-redis-data:/data'
+    command: [ 'redis-server', '--maxmemory', '${REDIS_MAXMEMORY:-200mb}' ]
     healthcheck:
       test: ["CMD", "/bin/bash", "-c", "[[ $(redis-cli ping) == 'PONG' ]] " ]
       interval: 10s
