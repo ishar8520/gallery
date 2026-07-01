@@ -76,6 +76,30 @@ async def me(
                             detail='Not authorized')
     return user_data
 
+@router.get(
+    '/verify',
+    status_code=status.HTTP_200_OK,
+    response_model=ResponseMe,
+    description="""Проверка токена для межсервисного взаимодействия\n
+    Валидирует подпись JWT и проверяет, что токен не был отозван (logout).\n
+    Разрешения: Только аутентифицированные пользователи"""
+)
+async def verify(
+    service: Annotated[AuthService, Depends(get_auth_service)],
+    auth: Annotated[AuthJWT, Depends(auth_jwt_dep)]
+):
+    try:
+        await auth.jwt_required()
+        user_data = await service.verify_token()
+    except exceptions.UnauthorizedException:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Token has been revoked')
+    except (JWTDecodeError, InvalidHeaderError, MissingTokenError):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
+                            detail='Not authorized')
+    return user_data
+
+
 @router.post(
     '/refresh',
     status_code=status.HTTP_200_OK,
