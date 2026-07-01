@@ -1,23 +1,12 @@
 from typing import Annotated
 
-from async_fastapi_jwt_auth import AuthJWT
-from async_fastapi_jwt_auth.auth_jwt import AuthJWTBearer
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.api.v1.models.registration import RequestRegistration
-from src.core.config import settings
 from src.services import exceptions
 from src.services.user import UserService, get_user_service
 
 router = APIRouter()
-
-
-auth_jwt_dep = AuthJWTBearer()
-
-
-@AuthJWT.load_config
-def get_config():
-    return settings.jwt
 
 
 @router.post(

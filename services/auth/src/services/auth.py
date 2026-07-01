@@ -100,6 +100,25 @@ class AuthService:
                                            expires=int(settings.jwt.refresh_expires_seconds))
         return access_token, refresh_token
 
+    async def verify_token(self) -> ResponseMe:
+        """Проверка токена для межсервисного взаимодействия.
+
+        Помимо проверки подписи JWT (выполняется на уровне эндпоинта через jwt_required),
+        дополнительно проверяет Redis: если токен был отозван через logout,
+        записи в Redis нет → UnauthorizedException.
+        """
+        claim = await self.jwt.get_raw_jwt()
+        user_id = claim['user_id']
+        stored = await self.redis_session.get_value(f'token:access:{user_id}')
+        if stored is None:
+            raise exceptions.UnauthorizedException
+        return ResponseMe(
+            user_id=user_id,
+            username=claim['username'],
+            email=claim['email'],
+            roles=claim['roles'],
+        )
+
     async def check_role(self, role: str):
         """Проверка наличия роли у текущего пользователя"""
         user = await self.get_me()

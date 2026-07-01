@@ -100,3 +100,33 @@ class TestCheckRole:
         jwt.get_jwt_subject.return_value = str(uuid.uuid4())
         with pytest.raises(exceptions.BadPermissionsException):
             await service.check_role("ADMIN")
+
+
+class TestVerifyToken:
+    def _claim(self, user_id: str) -> dict:
+        return {
+            "user_id": user_id,
+            "username": "alice",
+            "email": "alice@example.com",
+            "roles": ["USER"],
+        }
+
+    async def test_active_token_returns_user_data(self, service, jwt, redis_session):
+        user_id = str(uuid.uuid4())
+        jwt.get_raw_jwt.return_value = self._claim(user_id)
+        redis_session.get_value.return_value = "some-stored-token"
+
+        result = await service.verify_token()
+
+        assert str(result.user_id) == user_id
+        assert result.username == "alice"
+        assert result.roles == ["USER"]
+        redis_session.get_value.assert_awaited_once_with(f"token:access:{user_id}")
+
+    async def test_revoked_token_raises_unauthorized(self, service, jwt, redis_session):
+        user_id = str(uuid.uuid4())
+        jwt.get_raw_jwt.return_value = self._claim(user_id)
+        redis_session.get_value.return_value = None
+
+        with pytest.raises(exceptions.UnauthorizedException):
+            await service.verify_token()
