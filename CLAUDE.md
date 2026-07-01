@@ -3,18 +3,63 @@
 Онлайн-галерея: авторизованные пользователи хранят и просматривают свои фотографии.
 Микросервисная архитектура, развёртывание через Docker Compose ([compose.yaml](compose.yaml)).
 
-## Сервисы
+## Целевая архитектура
+
+```
+Browser / Mobile
+       │
+   [nginx]  ← единая точка входа, роутит по prefix
+       ├── /auth  →  auth-service  (PostgreSQL + Redis)
+       ├── /api   →  gallery-service  (PostgreSQL metadata + MinIO files)
+       └── /      →  frontend-service
+
+Kafka ──────── async шина событий
+  ├── topic: mail-events  ← auth/gallery → mail-service
+  └── topic: ugc-events   ← gallery → ugc-service
+
+Loki + Grafana ← structured logs от всех сервисов
+```
+
+## Сервисы — план и статус
 
 | Сервис | Путь | Стек | Статус |
 |---|---|---|---|
-| auth | `services/auth` | FastAPI, SQLAlchemy 2.0 (async), PostgreSQL, Redis, Alembic | разобран и поправлен (см. ниже) |
-| gallery | `services/gallery` | FastAPI (предположительно, есть Dockerfile + poetry) | не разбирался |
-| nginx | `services/nginx` | reverse proxy перед auth/gallery | не разбирался (кроме базового образа, см. ниже) |
-| minio | `services/minio` | S3-совместимое хранилище фото | не разбирался (кроме базового образа, см. ниже) |
+| auth | `services/auth` | FastAPI, SQLAlchemy async, PostgreSQL, Redis | ✅ разобран, тесты, CI |
+| gallery | `services/gallery` | FastAPI, SQLAlchemy async, PostgreSQL, MinIO | 🔜 следующий |
+| nginx | `services/nginx` | nginx 1.27-alpine, reverse proxy | частично (базовый образ заменён) |
+| minio | `services/minio` | minio/minio, S3-совместимое хранилище | частично (базовый образ заменён) |
+| mail | — | FastAPI или воркер, SMTP/SendGrid, Kafka consumer | не начат |
+| ugc | — | FastAPI или воркер, ClickHouse или PostgreSQL, Kafka consumer | не начат |
+| frontend | `services/frontend` (или отдельный) | TBD, постепенная интеграция | не начат |
+| Kafka | — | Apache Kafka | не начат |
+| Loki | — | Grafana Loki + Promtail + Grafana | не начат |
 
-Разбор и доработка сервисов идёт по очереди. Сейчас приведён в порядок только **auth**
-(код, тесты, CI). gallery/nginx/minio по содержимому — следующие в очереди, контекст по
-их прикладному коду/конфигу пока не собран.
+**Порядок разработки:** gallery → nginx (доработка роутинга) → Kafka + mail →
+frontend (постепенно) → ugc → Loki.
+
+## Ключевые продуктовые решения (зафиксированы)
+
+**gallery-service — модель данных:**
+- Файлы хранятся в MinIO (S3), метаданные — в отдельной PostgreSQL gallery-service.
+- Группировка фото = **папки/альбомы**: пользователь создаёт произвольные папки,
+  перемещает фото между ними. Никакого автоматического распознавания/тегирования.
+- Сортировка: по дате загрузки, дате на фото (EXIF), названию, размеру — на выбор пользователя.
+- Авторизация запросов: gallery вызывает `GET /auth/api/v1/verify` с Bearer-токеном пользователя,
+  получает `user_id + roles`, далее работает с данными этого пользователя.
+
+**Kafka:**
+- `mail-events` — auth (email верификация, сброс пароля) и gallery (уведомления) → mail-service.
+- `ugc-events` — gallery (просмотр, загрузка, удаление фото) → ugc-service.
+- Назначение: если mail-service или ugc-service недоступны, события не теряются.
+
+**Логирование:** Grafana Loki + Promtail (сборщик логов с контейнеров) + Grafana (UI).
+Выбрано вместо ELK как более лёгкое решение. Loki не индексирует содержимое логов —
+только метки (service, level), поиск по содержимому через grep-подобный LogQL.
+
+**Личный кабинет:** фича фронта, не отдельный сервис. Данные профиля из auth-service,
+фото и альбомы из gallery-service.
+
+Разбор сервисов идёт по очереди. Сейчас приведён в порядок только **auth**.
 
 ### Базовые образы — отказ от Bitnami (2026-06-23, смержено: PR #9 `infra/replace-bitnami-images`)
 
