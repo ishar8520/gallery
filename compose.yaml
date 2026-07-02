@@ -85,19 +85,48 @@ services:
     networks:
       - gallery-network
     environment:
-      - PROJECT_TITLE=gallery
+      - PROJECT_TITLE=Gallery Service
+      - GALLERY_POSTGRESQL_USERNAME=$GALLERY_POSTGRESQL_USERNAME
+      - GALLERY_POSTGRESQL_PASSWORD=$GALLERY_POSTGRESQL_PASSWORD
+      - GALLERY_POSTGRESQL_DATABASE=$GALLERY_POSTGRESQL_DATABASE
+      - GALLERY_POSTGRESQL_HOST=gallery-postgres
+      - GALLERY_POSTGRESQL_PORT=5432
       - MINIO_HOST=minio
       - MINIO_PORT=9000
       - MINIO_USER=$MINIO_USER
       - MINIO_PASSWORD=$MINIO_PASSWORD
-      - AUTH_SERVICE_HOST=$AUTH_SERVICE_HOST
-      - AUTH_SERVICE_PORT=$AUTH_SERVICE_PORT
+      - MINIO_BUCKET=gallery
+      - AUTH_SERVICE_HOST=auth-service
+      - AUTH_SERVICE_PORT=8000
+    depends_on:
+      gallery-postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:8000/api/v1/_healthcheck"]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 10s
+
+  gallery-postgres:
+    container_name: gallery-postgres
+    image: postgres:17
+    networks:
+      - gallery-network
+    volumes:
+      - 'gallery-postgres-data:/var/lib/postgresql/data'
+    environment:
+      - POSTGRES_USER=$GALLERY_POSTGRESQL_USERNAME
+      - POSTGRES_PASSWORD=$GALLERY_POSTGRESQL_PASSWORD
+      - POSTGRES_DB=$GALLERY_POSTGRESQL_DATABASE
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready --username=$GALLERY_POSTGRESQL_USERNAME --dbname=$GALLERY_POSTGRESQL_DATABASE"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   minio:
     container_name: gallery-minio
@@ -122,3 +151,4 @@ volumes:
   minio-data:
   auth-postgres-data:
   auth-redis-data:
+  gallery-postgres-data:

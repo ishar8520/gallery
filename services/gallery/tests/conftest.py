@@ -1,0 +1,15 @@
+import os
+
+os.environ.setdefault('PROJECT_TITLE', 'Gallery Service Test')
+os.environ.setdefault('GALLERY_POSTGRESQL_USERNAME', 'test')
+os.environ.setdefault('GALLERY_POSTGRESQL_PASSWORD', 'test')
+os.environ.setdefault('GALLERY_POSTGRESQL_DATABASE', 'test')
+os.environ.setdefault('GALLERY_POSTGRESQL_HOST', 'localhost')
+os.environ.setdefault('GALLERY_POSTGRESQL_PORT', '5432')
+os.environ.setdefault('MINIO_HOST', 'localhost')
+os.environ.setdefault('MINIO_PORT', '9000')
+os.environ.setdefault('MINIO_USER', 'minioadmin')
+os.environ.setdefault('MINIO_PASSWORD', 'minioadmin')
+os.environ.setdefault('MINIO_BUCKET', 'gallery')
+os.environ.setdefault('AUTH_SERVICE_HOST', 'localhost')
+os.environ.setdefault('AUTH_SERVICE_PORT', '8001')
