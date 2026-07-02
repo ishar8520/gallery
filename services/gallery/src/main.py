@@ -1,13 +1,19 @@
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.security import HTTPBearer
 
 from src.api.v1.endpoints import albums, photos
 from src.core.config import settings
 from src.dependences.auth.exceptions import UnauthorizedException
 
+# auto_error=False — не отклоняет запросы без токена здесь,
+# реальная проверка в get_current_user. Нужен только для кнопки Authorize в Swagger UI.
+_bearer_scheme = HTTPBearer(auto_error=False)
+
 app = FastAPI(
     title=settings.project.title,
     docs_url='/api/openapi',
     openapi_url='/api/openapi.json',
+    dependencies=[Depends(_bearer_scheme)],
 )
 
 
