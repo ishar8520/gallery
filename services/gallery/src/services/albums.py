@@ -17,8 +17,10 @@ class AlbumService:
         album = Album(user_id=user_id, name=name)
         return await self.pg.add_album(album)
 
-    async def list_albums(self, user_id: uuid.UUID) -> list[Album]:
-        return await self.pg.get_albums(user_id)
+    async def list_albums(
+        self, user_id: uuid.UUID, limit: int = 100, offset: int = 0
+    ) -> list[Album]:
+        return await self.pg.get_albums(user_id, limit=limit, offset=offset)
 
     async def get_album(self, album_id: uuid.UUID, user_id: uuid.UUID) -> Album:
         album = await self.pg.get_album(album_id, user_id)

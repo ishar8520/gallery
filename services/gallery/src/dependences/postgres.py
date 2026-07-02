@@ -55,13 +55,15 @@ class GalleryPostgresDep:
         album_id: uuid.UUID | None = None,
         sort_by: SortField = SortField.UPLOADED_AT,
         order: SortOrder = SortOrder.DESC,
+        limit: int = 100,
+        offset: int = 0,
     ) -> list[Photo]:
         col = getattr(Photo, sort_by.value)
         order_clause = col.desc() if order == SortOrder.DESC else col.asc()
         stmt = select(Photo).where(Photo.user_id == user_id)
         if album_id is not None:
             stmt = stmt.where(Photo.album_id == album_id)
-        stmt = stmt.order_by(order_clause)
+        stmt = stmt.order_by(order_clause).limit(limit).offset(offset)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -107,8 +109,16 @@ class GalleryPostgresDep:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
-    async def get_albums(self, user_id: uuid.UUID) -> list[Album]:
-        stmt = select(Album).where(Album.user_id == user_id).order_by(Album.created_at.desc())
+    async def get_albums(
+        self, user_id: uuid.UUID, limit: int = 100, offset: int = 0
+    ) -> list[Album]:
+        stmt = (
+            select(Album)
+            .where(Album.user_id == user_id)
+            .order_by(Album.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+        )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 

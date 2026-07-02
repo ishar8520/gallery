@@ -45,12 +45,16 @@ async def list_photos(
     album_id: Annotated[uuid.UUID | None, Query()] = None,
     sort_by: Annotated[SortField, Query()] = SortField.UPLOADED_AT,
     order: Annotated[SortOrder, Query()] = SortOrder.DESC,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 100,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     photos = await service.list_photos(
         user_id=current_user.user_id,
         album_id=album_id,
         sort_by=sort_by,
         order=order,
+        limit=limit,
+        offset=offset,
     )
     return [ResponsePhoto.model_validate(p) for p in photos]
 

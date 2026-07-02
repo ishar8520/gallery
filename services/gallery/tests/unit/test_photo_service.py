@@ -71,6 +71,41 @@ class TestPhotoServiceUpload:
         assert exc_info.value.status_code == 413  # HTTP_413_CONTENT_TOO_LARGE
 
 
+class TestPhotoServiceUploadWithAlbum:
+    async def test_upload_with_missing_album_raises_404(self):
+        pg = AsyncMock()
+        pg.get_album.return_value = None
+        service = PhotoService(pg=pg, minio=AsyncMock())
+
+        f = MagicMock(spec=UploadFile)
+        f.content_type = 'image/jpeg'
+        f.filename = 'photo.jpg'
+        f.read = AsyncMock(return_value=b'fake')
+
+        with pytest.raises(HTTPException) as exc_info:
+            await service.upload_photo(f, title='Test', user_id=uuid.uuid4(), album_id=uuid.uuid4())
+        assert exc_info.value.status_code == 404
+        assert 'Album' in exc_info.value.detail
+
+    async def test_upload_minio_error_raises_502(self):
+        from src.db.minio import S3Error
+
+        pg = AsyncMock()
+        pg.get_album.return_value = None
+        minio = AsyncMock()
+        minio.upload_file.side_effect = S3Error('put_object', 'bucket', 'obj', 'err', 'code', None)
+        service = PhotoService(pg=pg, minio=minio)
+
+        f = MagicMock(spec=UploadFile)
+        f.content_type = 'image/jpeg'
+        f.filename = 'photo.jpg'
+        f.read = AsyncMock(return_value=b'fake')
+
+        with pytest.raises(HTTPException) as exc_info:
+            await service.upload_photo(f, title='Test', user_id=uuid.uuid4())
+        assert exc_info.value.status_code == 502
+
+
 class TestPhotoServiceList:
     async def test_list_photos_delegates_to_pg(self):
         pg = AsyncMock()
@@ -94,6 +129,17 @@ class TestPhotoServiceList:
 
         call_kwargs = pg.get_photos.call_args.kwargs
         assert call_kwargs['album_id'] == album_id
+
+    async def test_list_photos_passes_pagination(self):
+        pg = AsyncMock()
+        pg.get_photos.return_value = []
+        service = PhotoService(pg=pg, minio=AsyncMock())
+
+        await service.list_photos(user_id=uuid.uuid4(), limit=10, offset=20)
+
+        call_kwargs = pg.get_photos.call_args.kwargs
+        assert call_kwargs['limit'] == 10
+        assert call_kwargs['offset'] == 20
 
 
 class TestPhotoServiceGetUrl:
@@ -120,6 +166,52 @@ class TestPhotoServiceGetUrl:
         assert exc_info.value.status_code == 404
 
 
+class TestPhotoServiceMove:
+    async def test_move_to_album_success(self):
+        pg = AsyncMock()
+        album = MagicMock()
+        photo = MagicMock()
+        pg.get_album.return_value = album
+        pg.update_photo_album.return_value = photo
+
+        service = PhotoService(pg=pg, minio=AsyncMock())
+        result = await service.move_photo(uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
+
+        pg.get_album.assert_awaited_once()
+        assert result is photo
+
+    async def test_move_to_none_skips_album_check(self):
+        pg = AsyncMock()
+        photo = MagicMock()
+        pg.update_photo_album.return_value = photo
+
+        service = PhotoService(pg=pg, minio=AsyncMock())
+        await service.move_photo(uuid.uuid4(), uuid.uuid4(), None)
+
+        pg.get_album.assert_not_awaited()
+
+    async def test_move_with_missing_album_raises_404(self):
+        pg = AsyncMock()
+        pg.get_album.return_value = None
+
+        service = PhotoService(pg=pg, minio=AsyncMock())
+        with pytest.raises(HTTPException) as exc_info:
+            await service.move_photo(uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
+        assert exc_info.value.status_code == 404
+        assert 'Album' in exc_info.value.detail
+
+    async def test_move_photo_not_found_raises_404(self):
+        pg = AsyncMock()
+        pg.get_album.return_value = MagicMock()
+        pg.update_photo_album.return_value = None
+
+        service = PhotoService(pg=pg, minio=AsyncMock())
+        with pytest.raises(HTTPException) as exc_info:
+            await service.move_photo(uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
+        assert exc_info.value.status_code == 404
+        assert 'Photo' in exc_info.value.detail
+
+
 class TestPhotoServiceDelete:
     async def test_delete_success(self):
         pg = AsyncMock()
@@ -141,3 +233,26 @@ class TestPhotoServiceDelete:
         with pytest.raises(HTTPException) as exc_info:
             await service.delete_photo(uuid.uuid4(), uuid.uuid4())
         assert exc_info.value.status_code == 404
+
+    async def test_delete_order_db_before_minio(self):
+        """DB удаляется до MinIO — при сбое MinIO запись не теряется."""
+        call_order: list[str] = []
+
+        async def record_db(*a, **kw):
+            call_order.append('db')
+            return True
+
+        async def record_minio(*a, **kw):
+            call_order.append('minio')
+
+        pg = AsyncMock()
+        minio = AsyncMock()
+        photo = MagicMock(bucket_name='gallery', object_name='u/p')
+        pg.get_photo.return_value = photo
+        pg.delete_photo.side_effect = record_db
+        minio.delete_file.side_effect = record_minio
+
+        service = PhotoService(pg=pg, minio=minio)
+        await service.delete_photo(uuid.uuid4(), uuid.uuid4())
+
+        assert call_order == ['db', 'minio']

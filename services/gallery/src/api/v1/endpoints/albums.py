@@ -1,7 +1,7 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Query, status
 
 from src.api.v1.models.albums import RequestCreateAlbum, RequestUpdateAlbum, ResponseAlbum
 from src.dependences.auth.auth import CurrentUserDep
@@ -26,8 +26,10 @@ async def create_album(
 async def list_albums(
     current_user: CurrentUserDep,
     service: AlbumServiceDep,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 100,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
-    albums = await service.list_albums(current_user.user_id)
+    albums = await service.list_albums(current_user.user_id, limit=limit, offset=offset)
     return [ResponseAlbum.model_validate(a) for a in albums]
 
 

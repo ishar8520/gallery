@@ -105,8 +105,12 @@ class PhotoService:
         album_id: uuid.UUID | None = None,
         sort_by: SortField = SortField.UPLOADED_AT,
         order: SortOrder = SortOrder.DESC,
+        limit: int = 100,
+        offset: int = 0,
     ) -> list[Photo]:
-        return await self.pg.get_photos(user_id, album_id=album_id, sort_by=sort_by, order=order)
+        return await self.pg.get_photos(
+            user_id, album_id=album_id, sort_by=sort_by, order=order, limit=limit, offset=offset
+        )
 
     async def get_photo_url(self, photo_id: uuid.UUID, user_id: uuid.UUID) -> tuple[Photo, str]:
         photo = await self.pg.get_photo(photo_id, user_id)
@@ -123,6 +127,10 @@ class PhotoService:
     async def move_photo(
         self, photo_id: uuid.UUID, user_id: uuid.UUID, album_id: uuid.UUID | None
     ) -> Photo:
+        if album_id is not None:
+            album = await self.pg.get_album(album_id, user_id)
+            if album is None:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Album not found')
         photo = await self.pg.update_photo_album(photo_id, user_id, album_id)
         if photo is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Photo not found')
@@ -132,15 +140,17 @@ class PhotoService:
         photo = await self.pg.get_photo(photo_id, user_id)
         if photo is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Photo not found')
+        # DB first: если MinIO упадёт после — запись сохранится, можно повторить.
+        # Если сначала удалить из MinIO, а потом упадёт DB — файл потерян безвозвратно.
+        deleted = await self.pg.delete_photo(photo_id, user_id)
+        if not deleted:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Photo not found')
         try:
             await self.minio.delete_file(photo.bucket_name, photo.object_name)
         except S3Error as exc:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY, detail=f'Storage error: {exc}'
             ) from exc
-        deleted = await self.pg.delete_photo(photo_id, user_id)
-        if not deleted:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Photo not found')
 
 
 def get_photo_service(

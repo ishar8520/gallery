@@ -25,7 +25,7 @@ Loki + Grafana ← structured logs от всех сервисов
 | Сервис | Путь | Стек | Статус |
 |---|---|---|---|
 | auth | `services/auth` | FastAPI, SQLAlchemy async, PostgreSQL, Redis | ✅ разобран, тесты, CI |
-| gallery | `services/gallery` | FastAPI, SQLAlchemy async, PostgreSQL, MinIO | 🔜 следующий |
+| gallery | `services/gallery` | FastAPI, SQLAlchemy async, PostgreSQL, MinIO | ✅ разобран, тесты, CI |
 | nginx | `services/nginx` | nginx 1.27-alpine, reverse proxy | частично (базовый образ заменён) |
 | minio | `services/minio` | minio/minio, S3-совместимое хранилище | частично (базовый образ заменён) |
 | mail | — | FastAPI или воркер, SMTP/SendGrid, Kafka consumer | не начат |
@@ -59,7 +59,7 @@ frontend (постепенно) → ugc → Loki.
 **Личный кабинет:** фича фронта, не отдельный сервис. Данные профиля из auth-service,
 фото и альбомы из gallery-service.
 
-Разбор сервисов идёт по очереди. Сейчас приведён в порядок только **auth**.
+Разбор сервисов идёт по очереди. Приведены в порядок: **auth**, **gallery**.
 
 ### Базовые образы — отказ от Bitnami (2026-06-23, смержено: PR #9 `infra/replace-bitnami-images`)
 
@@ -191,6 +191,73 @@ poetry run ruff check .
 только при изменениях внутри `services/auth/**` или самого workflow-файла.
 При появлении gallery/nginx/minio CI — заводить по аналогии отдельным workflow-файлом
 с собственным path-фильтром, не расширять этот.
+
+## Gallery-service
+
+### Стек
+Python 3.12, FastAPI 0.115, Pydantic v2, SQLAlchemy 2.0 async + asyncpg, Alembic,
+httpx (межсервисный вызов `/auth/api/v1/verify`), minio (официальный SDK, blocking calls
+обёрнуты в `asyncio.to_thread`), Pillow (EXIF-дата из JPEG).
+
+Аутентификация: gallery не использует JWT-библиотеку — читает `Authorization` header и
+пробрасывает его в auth-service. `CurrentUserDep` вызывает `GET /auth/api/v1/verify`,
+получает `user_id + roles`.
+
+### Текущие допущения (технический долг)
+
+**httpx AsyncClient создаётся на каждый запрос** ([src/dependences/httpx.py](services/gallery/src/dependences/httpx.py)) —
+`get_httpx_client` открывает новый `AsyncClient` (и новый connection pool) на каждый запрос к auth-service.
+Правильно: singleton через FastAPI lifespan (`app.state.httpx_client`). При текущей нагрузке не критично.
+
+**MinioClient создаётся на каждый запрос** ([src/db/minio.py](services/gallery/src/db/minio.py)) —
+`get_minio()` создаёт новый `MinioClient()` на каждый вызов. Плюс `ensure_bucket` делает два
+лишних round-trip к MinIO при каждой загрузке. Правильно: singleton через lifespan, бакет
+создавать один раз при старте. При текущей нагрузке не критично.
+
+**Rate limiting на upload отсутствует** — нет ограничений на количество загрузок в единицу
+времени. Перед выходом в production необходимо добавить (slowapi или middleware).
+
+**Пагинация** — реализована через `limit` (default 100, max 1000) и `offset`. Cursor-based
+пагинация (по `uploaded_at` + `id`) будет эффективнее при больших объёмах, но не нужна пока.
+
+**NULLS при сортировке по `exif_date`** — Postgres по умолчанию ставит NULL первыми при DESC
+и последними при ASC. Явного `NULLS LAST` / `NULLS FIRST` нет — поведение может удивить.
+
+### Тесты
+
+31 юнит-тест в `services/gallery/tests/`:
+- `test_photo_service.py` — EXIF-парсинг, upload (MIME, size, album validation, MinIO error),
+  list (пагинация, фильтр по альбому), get URL, move (album ownership, photo not found),
+  delete (порядок DB→MinIO)
+- `test_album_service.py` — create, get, rename, delete
+- `test_auth_dep.py` — missing token, valid token, auth-service error, HTTP status error
+
+**Как запустить:**
+```bash
+cd services/gallery
+.venv/bin/pytest          # если venv создан вручную
+# или
+poetry run pytest
+poetry run ruff check .
+```
+
+**Локальное окружение:** та же ситуация что у auth — система на Python 3.14, проект на 3.12.
+`services/gallery/.python-version` = `3.12.13`. venv создавался вручную через
+`python3.12 -m venv .venv` (poetry шим при первичной настройке указал не туда).
+
+### Переменные окружения
+
+Шаблон в [.env.sample](.env.sample). Для gallery-service: `GALLERY_POSTGRESQL_*`,
+`MINIO_HOST/PORT/USER/PASSWORD`, `AUTH_SERVICE_HOST/PORT`. Читаются через `pydantic-settings`
+с соответствующими префиксами.
+
+### Сознательно отложено (не блокирует текущую ветку)
+
+- Singleton httpx client и MinIO client через lifespan
+- Rate limiting на upload
+- Структурное логирование
+- Healthcheck с реальными проверками (Postgres, MinIO)
+- Cursor-based пагинация
 
 ## Соглашения по работе
 
