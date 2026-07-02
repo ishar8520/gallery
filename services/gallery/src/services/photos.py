@@ -61,6 +61,14 @@ class PhotoService:
                 detail='File too large (max 50 MB)',
             )
 
+        if album_id is not None:
+            album = await self.pg.get_album(album_id, user_id)
+            if album is None:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail='Album not found',
+                )
+
         photo_id = uuid.uuid4()
         exif_date = _extract_exif_date(data, mime_type)
 

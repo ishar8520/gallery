@@ -2,11 +2,19 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form, Query, UploadFile, status
+from pydantic import BeforeValidator
 
 from src.api.v1.models.photos import RequestMovePhoto, ResponsePhoto, ResponsePhotoUrl
 from src.dependences.auth.auth import CurrentUserDep
 from src.dependences.postgres import SortField, SortOrder
 from src.services.photos import PhotoService, get_photo_service
+
+
+def _empty_to_none(v: object) -> object:
+    return None if v == '' else v
+
+
+NullableUUID = Annotated[uuid.UUID | None, BeforeValidator(_empty_to_none)]
 
 router = APIRouter(prefix='/photos', tags=['photos'])
 
@@ -19,7 +27,7 @@ async def upload_photo(
     title: Annotated[str, Form(min_length=1, max_length=255)],
     service: PhotoServiceDep,
     current_user: CurrentUserDep,
-    album_id: Annotated[uuid.UUID | None, Form()] = None,
+    album_id: Annotated[NullableUUID, Form()] = None,
 ):
     photo = await service.upload_photo(
         file=file,
