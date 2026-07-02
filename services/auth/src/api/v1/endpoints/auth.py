@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from async_fastapi_jwt_auth import AuthJWT
-from async_fastapi_jwt_auth.exceptions import InvalidHeaderError, JWTDecodeError, MissingTokenError
+from async_fastapi_jwt_auth.exceptions import AuthJWTException
 from fastapi import APIRouter, Depends, HTTPException, status
 
 from src.api.v1.models.auth import RequestLogin, ResponseLogin, ResponseMe
@@ -27,7 +27,7 @@ async def login(
         await auth.jwt_required()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='You are already login. Logout first')
-    except (JWTDecodeError, InvalidHeaderError, MissingTokenError):
+    except AuthJWTException:
         pass
     try:
         token = await service.get_login(request_model)
@@ -51,7 +51,7 @@ async def logout(
     try:
         await auth.jwt_required()
         await service.get_logout()
-    except (JWTDecodeError, InvalidHeaderError, MissingTokenError):
+    except AuthJWTException:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Not authorized')
     return {'logout': 'ok'}
@@ -71,7 +71,7 @@ async def me(
     try:
         await auth.jwt_required()
         user_data = await service.get_me()
-    except (JWTDecodeError, InvalidHeaderError, MissingTokenError):
+    except AuthJWTException:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Not authorized')
     return user_data
@@ -94,7 +94,7 @@ async def verify(
     except exceptions.UnauthorizedException:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Token has been revoked')
-    except (JWTDecodeError, InvalidHeaderError, MissingTokenError):
+    except AuthJWTException:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Not authorized')
     return user_data
@@ -112,7 +112,7 @@ async def refresh(
     try:
         await auth.jwt_refresh_token_required()
         access_token = await service.get_refresh()
-    except (JWTDecodeError, InvalidHeaderError, MissingTokenError):
+    except AuthJWTException:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail='Not authorized')
     return {'access_token': access_token}
