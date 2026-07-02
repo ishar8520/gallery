@@ -1,15 +1,27 @@
+import uuid
+from datetime import datetime
+
 from pydantic import BaseModel
 
-class RequestPhotoDownload(BaseModel):
-    bucket_name: str = 'testbucket'
-    object_name: str = 'TestPhoto.jpeg'
-    file_path: str = '/home/v/Pictures/Screenshots/123.jpeg'
 
-class RequestPhotoUpload(BaseModel):
+class ResponsePhoto(BaseModel):
+    id: uuid.UUID
+    user_id: uuid.UUID
+    album_id: uuid.UUID | None
     title: str
+    original_filename: str
+    size_bytes: int
+    mime_type: str
+    exif_date: datetime | None
+    uploaded_at: datetime
 
-class ResponsePhotoDownload(BaseModel):
-    status: str
+    model_config = {'from_attributes': True}
 
-class ResponsePhotoUpload(BaseModel):
-    pass
+
+class ResponsePhotoUrl(BaseModel):
+    photo: ResponsePhoto
+    url: str
+
+
+class RequestMovePhoto(BaseModel):
+    album_id: uuid.UUID | None = None

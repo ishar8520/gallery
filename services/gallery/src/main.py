@@ -1,23 +1,31 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI, HTTPException, Request, status
+from fastapi.security import HTTPBearer
 
-from src.api.v1.endpoints import gallery, user
+from src.api.v1.endpoints import albums, photos
+from src.core.config import settings
+from src.dependences.auth.exceptions import UnauthorizedException
+
+# auto_error=False — не отклоняет запросы без токена здесь,
+# реальная проверка в get_current_user. Нужен только для кнопки Authorize в Swagger UI.
+_bearer_scheme = HTTPBearer(auto_error=False)
 
 app = FastAPI(
-    title='Gallery service',
-    description='Service of photo gallery',
+    title=settings.project.title,
     docs_url='/api/openapi',
-    openapi_url='/api/openapi.json'
+    openapi_url='/api/openapi.json',
+    dependencies=[Depends(_bearer_scheme)],
 )
 
-@app.get(f'/api/v1/_healthcheck')
+
+@app.exception_handler(UnauthorizedException)
+async def unauthorized_handler(request: Request, exc: UnauthorizedException):
+    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail='Not authorized')
+
+
+@app.get('/api/v1/_healthcheck')
 async def healthcheck():
     return {}
 
-app.include_router(
-    router=gallery.router,
-    tags=['main']
-)
-app.include_router(
-    router=user.router,
-    tags=['user']
-)
+
+app.include_router(photos.router, prefix='/api/v1')
+app.include_router(albums.router, prefix='/api/v1')
