@@ -57,7 +57,7 @@ class PhotoService:
         data = await file.read()
         if len(data) > MAX_FILE_SIZE:
             raise HTTPException(
-                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                status_code=413,
                 detail='File too large (max 50 MB)',
             )
 

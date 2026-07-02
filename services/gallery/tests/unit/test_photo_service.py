@@ -68,7 +68,7 @@ class TestPhotoServiceUpload:
 
         with pytest.raises(HTTPException) as exc_info:
             await service.upload_photo(file, title='Test', user_id=uuid.uuid4())
-        assert exc_info.value.status_code == 413  # HTTP_413_CONTENT_TOO_LARGE
+        assert exc_info.value.status_code == 413
 
 
 class TestPhotoServiceUploadWithAlbum:
