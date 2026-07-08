@@ -20,11 +20,12 @@ async def register_user(
     service: Annotated[UserService, Depends(get_user_service)]
 ):
     try:
-        user_id = await service.get_register(request_model)
+        await service.get_register(request_model)
     except exceptions.BadEmailException:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='Wrong email')
-    except exceptions.UserExistException:
+    except (exceptions.UsernameExistException, exceptions.EmailExistException,
+            exceptions.UserExistException):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
                             detail='User with this username or email already exists')
-    return {'user_id': user_id}
+    return {'message': 'Please check your email to confirm registration'}

@@ -13,11 +13,12 @@ MAIL_TOPIC = 'mail-events'
 
 async def handle_event(event: dict, mail_service: MailService) -> None:
     event_type = event.get('event_type')
-    if event_type == 'user_registered':
+    if event_type == 'email_confirmation_requested':
         payload = event['payload']
-        await mail_service.send_welcome_email(
+        await mail_service.send_confirmation_email(
             to=payload['email'],
             username=payload['username'],
+            token=payload['token'],
         )
     else:
         logger.warning('Unknown event type: %s', event_type)

@@ -14,6 +14,8 @@ services:
         condition: service_healthy
       gallery-service:
         condition: service_healthy
+      link-service:
+        condition: service_healthy
 
   auth-service:
     container_name: auth-service
@@ -33,6 +35,7 @@ services:
       - JWT_ACCESS_EXPIRES_SECONDS=$JWT_ACCESS_EXPIRES_SECONDS
       - JWT_REFRESH_EXPIRES_SECONDS=$JWT_REFRESH_EXPIRES_SECONDS
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - CONFIRMATION_TOKEN_TTL_SECONDS=${CONFIRMATION_TOKEN_TTL_SECONDS:-86400}
       - AUTH_SUPERUSER_USERNAME=$AUTH_SUPERUSER_USERNAME
       - AUTH_SUPERUSER_PASSWORD=$AUTH_SUPERUSER_PASSWORD
       - AUTH_SUPERUSER_EMAIL=$AUTH_SUPERUSER_EMAIL
@@ -187,11 +190,15 @@ services:
       - SMTP_HOST=mailhog
       - SMTP_PORT=1025
       - SMTP_FROM_EMAIL=noreply@gallery.local
+      - LINK_SERVICE_URL=http://link-service:8000
+      - AUTH_PUBLIC_URL=${AUTH_PUBLIC_URL:-http://localhost:8000}
     depends_on:
       kafka:
         condition: service_healthy
       mailhog:
         condition: service_started
+      link-service:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:8000/mail/api/v1/_healthcheck"]
       interval: 30s
@@ -208,6 +215,41 @@ services:
       - '1025:1025'
       - '8025:8025'
 
+  link-service:
+    container_name: link-service
+    build:
+      context: ./services/link
+    networks:
+      - gallery-network
+    environment:
+      - LINK_REDIS_HOST=link-redis
+      - LINK_REDIS_PORT=6379
+      - PROJECT_PUBLIC_URL=${AUTH_PUBLIC_URL:-http://localhost:8000}
+    depends_on:
+      link-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:8000/link/api/v1/_healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  link-redis:
+    container_name: link-redis
+    image: redis:8.0
+    networks:
+      - gallery-network
+    volumes:
+      - 'link-redis-data:/data'
+    command: [ 'redis-server', '--maxmemory', '${REDIS_MAXMEMORY:-100mb}' ]
+    healthcheck:
+      test: ["CMD", "/bin/bash", "-c", "[[ $(redis-cli ping) == 'PONG' ]] "]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
 networks:
   gallery-network:
 
@@ -218,3 +260,4 @@ volumes:
   auth-redis-data:
   gallery-postgres-data:
   kafka-data:
+  link-redis-data:

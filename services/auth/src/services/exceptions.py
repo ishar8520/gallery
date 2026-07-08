@@ -27,3 +27,6 @@ class UserNotFoundException(Exception):
 
 class RoleNotFoundException(Exception):
     pass
+
+class ConfirmationTokenExpiredException(Exception):
+    pass

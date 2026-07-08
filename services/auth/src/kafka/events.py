@@ -1,13 +1,12 @@
-import uuid
 from datetime import UTC, datetime
 
 
-def user_registered_event(user_id: uuid.UUID, username: str, email: str) -> dict:
+def email_confirmation_requested_event(token: str, username: str, email: str) -> dict:
     return {
-        'event_type': 'user_registered',
+        'event_type': 'email_confirmation_requested',
         'timestamp': datetime.now(UTC).isoformat(),
         'payload': {
-            'user_id': str(user_id),
+            'token': token,
             'username': username,
             'email': email,
         },

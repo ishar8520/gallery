@@ -42,11 +42,18 @@ class KafkaConfig(BaseSettings):
     bootstrap_servers: str = 'kafka:9092'
 
 
+class RegistrationConfig(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix='confirmation_token_')
+
+    ttl_seconds: int = 86400
+
+
 class Settings(BaseSettings):
     postgres: PostgresConfig = PostgresConfig()
     redis: RedisConfig = RedisConfig()
     jwt: JWTConfig = JWTConfig()
     kafka: KafkaConfig = KafkaConfig()
+    registration: RegistrationConfig = RegistrationConfig()
 
 
 settings = Settings()

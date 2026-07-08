@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from src.api.v1.endpoints import auth, registration, role, user
+from src.api.v1.endpoints import auth, confirm, registration, role, user
 from src.core.config import settings
 from src.kafka.producer import create_producer
 
@@ -40,5 +40,6 @@ async def healthcheck():
 
 app.include_router(auth.router, prefix=f'{base_url_prefix_api}', tags=['auth'])
 app.include_router(registration.router, prefix=f'{base_url_prefix_api}', tags=['user'])
+app.include_router(confirm.router, prefix=f'{base_url_prefix_api}', tags=['user'])
 app.include_router(user.router, prefix=f'{base_url_prefix_api}', tags=['user'])
 app.include_router(role.router, prefix=f'{base_url_prefix_api}', tags=['role'])
