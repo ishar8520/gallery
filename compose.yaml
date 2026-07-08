@@ -32,11 +32,14 @@ services:
       - JWT_AUTHJWT_SECRET_KEY=$JWT_SECRET_KEY
       - JWT_ACCESS_EXPIRES_SECONDS=$JWT_ACCESS_EXPIRES_SECONDS
       - JWT_REFRESH_EXPIRES_SECONDS=$JWT_REFRESH_EXPIRES_SECONDS
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - AUTH_SUPERUSER_USERNAME=$AUTH_SUPERUSER_USERNAME
       - AUTH_SUPERUSER_PASSWORD=$AUTH_SUPERUSER_PASSWORD
       - AUTH_SUPERUSER_EMAIL=$AUTH_SUPERUSER_EMAIL
     depends_on:
       auth-postgres:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:8000/auth/api/v1/_healthcheck"]
@@ -98,11 +101,14 @@ services:
       - MINIO_BUCKET=gallery
       - AUTH_SERVICE_HOST=auth-service
       - AUTH_SERVICE_PORT=8000
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
     depends_on:
       gallery-postgres:
         condition: service_healthy
       minio:
         condition: service_started
+      kafka:
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:8000/api/v1/_healthcheck"]
       interval: 30s
@@ -143,6 +149,65 @@ services:
       - '9000:9000'
       - '9001:9001'
 
+  kafka:
+    container_name: kafka
+    image: apache/kafka:3.9.0
+    networks:
+      - gallery-network
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://kafka:9092,CONTROLLER://kafka:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  mail-service:
+    container_name: mail-service
+    build:
+      context: ./services/mail
+    networks:
+      - gallery-network
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - SMTP_HOST=mailhog
+      - SMTP_PORT=1025
+      - SMTP_FROM_EMAIL=noreply@gallery.local
+    depends_on:
+      kafka:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:8000/mail/api/v1/_healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 10s
+
+  mailhog:
+    container_name: mailhog
+    image: mailhog/mailhog:latest
+    networks:
+      - gallery-network
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+
 networks:
   gallery-network:
 
@@ -152,3 +217,4 @@ volumes:
   auth-postgres-data:
   auth-redis-data:
   gallery-postgres-data:
+  kafka-data:

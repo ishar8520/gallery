@@ -41,11 +41,18 @@ class AuthConfig(BaseSettings):
     port: int
 
 
+class KafkaConfig(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix='kafka_')
+
+    bootstrap_servers: str = 'kafka:9092'
+
+
 class Settings(BaseSettings):
     project: ProjectConfig = ProjectConfig()
     postgresql: PostgresqlConfig = PostgresqlConfig()
     minio: MinioConfig = MinioConfig()
     auth: AuthConfig = AuthConfig()
+    kafka: KafkaConfig = KafkaConfig()
 
 
 settings = Settings()

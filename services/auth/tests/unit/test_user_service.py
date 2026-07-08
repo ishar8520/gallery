@@ -16,8 +16,13 @@ def pg_session():
 
 
 @pytest.fixture
-def service(pg_session):
-    return UserService(postgres=pg_session)
+def kafka_mock():
+    return AsyncMock()
+
+
+@pytest.fixture
+def service(pg_session, kafka_mock):
+    return UserService(postgres=pg_session, kafka_producer=kafka_mock)
 
 
 class TestIsValidEmail:

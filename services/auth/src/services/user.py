@@ -1,24 +1,36 @@
+import logging
 import re
 from typing import Annotated
 from uuid import UUID
 
 import bcrypt
+from aiokafka import AIOKafkaProducer
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.v1.models.registration import RequestRegistration
 from src.api.v1.models.user import RequestPatchUser, ResponseUser
 from src.dependences.postgres import PostgresDep, get_async_postgres
+from src.kafka.events import user_registered_event
+from src.kafka.producer import get_kafka_producer
 from src.models.enums import Roles
 from src.models.user import User, UserRoles
 from src.services import exceptions
 
+logger = logging.getLogger(__name__)
+
+MAIL_TOPIC = 'mail-events'
+
 
 class UserService:
     pg_session: PostgresDep
+    kafka: AIOKafkaProducer
 
-    def __init__(self, postgres: AsyncSession) -> None:
+    def __init__(
+        self, postgres: AsyncSession, kafka_producer: AIOKafkaProducer | None = None
+    ) -> None:
         self.pg_session = postgres
+        self.kafka = kafka_producer
 
     async def get_register(self, request_model: RequestRegistration) -> UUID:
         """Регистрация нового пользователя"""
@@ -46,6 +58,14 @@ class UserService:
         user_role = UserRoles(user=user, role=role)
         user_id = await self.pg_session.add_user(user)
         await self.pg_session.add_user_role(user_role)
+        if self.kafka:
+            try:
+                await self.kafka.send_and_wait(
+                    MAIL_TOPIC,
+                    user_registered_event(user_id, request_model.username, request_model.email),
+                )
+            except Exception:
+                logger.exception('Failed to send user_registered event to Kafka')
         return user_id
 
     async def get_user(self, user_id: UUID) -> ResponseUser:
@@ -96,5 +116,6 @@ class UserService:
 
 def get_user_service(
     pg_dep: Annotated[AsyncSession, Depends(get_async_postgres)],
-    ) -> UserService:
-    return UserService(postgres=pg_dep)
+    kafka: Annotated[AIOKafkaProducer, Depends(get_kafka_producer)],
+) -> UserService:
+    return UserService(postgres=pg_dep, kafka_producer=kafka)

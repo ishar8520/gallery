@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "gallery"
+name = "mail"
 version = "0.1.0"
 description = ""
 authors = ["None <none@example.com>"]
@@ -9,13 +9,8 @@ package-mode = false
 python = ">=3.12,<3.13"
 fastapi = {extras = ["standard"], version = "^0.115.0"}
 pydantic-settings = "^2.9.0"
-sqlalchemy = {extras = ["asyncio"], version = "^2.0.0"}
-asyncpg = "^0.30.0"
-alembic = "^1.14.0"
-minio = "^7.2.0"
-httpx = "^0.28.0"
-pillow = "^11.0.0"
 aiokafka = "^0.12.0"
+aiosmtplib = "^3.0.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.3.0,<9.0.0"

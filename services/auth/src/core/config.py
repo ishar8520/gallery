@@ -36,10 +36,17 @@ class JWTConfig(BaseSettings):
     refresh_expires_seconds: int
 
 
+class KafkaConfig(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix='kafka_')
+
+    bootstrap_servers: str = 'kafka:9092'
+
+
 class Settings(BaseSettings):
     postgres: PostgresConfig = PostgresConfig()
     redis: RedisConfig = RedisConfig()
     jwt: JWTConfig = JWTConfig()
+    kafka: KafkaConfig = KafkaConfig()
 
 
 settings = Settings()

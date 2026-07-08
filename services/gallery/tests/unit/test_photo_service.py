@@ -22,8 +22,8 @@ class TestExtractExifDate:
 
 
 class TestPhotoServiceUpload:
-    def _make_service(self, pg_mock, minio_mock):
-        return PhotoService(pg=pg_mock, minio=minio_mock)
+    def _make_service(self, pg_mock, minio_mock, kafka_mock=None):
+        return PhotoService(pg=pg_mock, minio=minio_mock, kafka=kafka_mock or AsyncMock())
 
     def _make_upload_file(
         self, content=b'fake-image', content_type='image/jpeg', filename='photo.jpg'
@@ -75,7 +75,7 @@ class TestPhotoServiceUploadWithAlbum:
     async def test_upload_with_missing_album_raises_404(self):
         pg = AsyncMock()
         pg.get_album.return_value = None
-        service = PhotoService(pg=pg, minio=AsyncMock())
+        service = PhotoService(pg=pg, minio=AsyncMock(), kafka=AsyncMock())
 
         f = MagicMock(spec=UploadFile)
         f.content_type = 'image/jpeg'
@@ -94,7 +94,7 @@ class TestPhotoServiceUploadWithAlbum:
         pg.get_album.return_value = None
         minio = AsyncMock()
         minio.upload_file.side_effect = S3Error('put_object', 'bucket', 'obj', 'err', 'code', None)
-        service = PhotoService(pg=pg, minio=minio)
+        service = PhotoService(pg=pg, minio=minio, kafka=AsyncMock())
 
         f = MagicMock(spec=UploadFile)
         f.content_type = 'image/jpeg'
@@ -109,7 +109,7 @@ class TestPhotoServiceUploadWithAlbum:
 class TestPhotoServiceList:
     async def test_list_photos_delegates_to_pg(self):
         pg = AsyncMock()
-        service = PhotoService(pg=pg, minio=AsyncMock())
+        service = PhotoService(pg=pg, minio=AsyncMock(), kafka=AsyncMock())
         user_id = uuid.uuid4()
         pg.get_photos.return_value = []
 
@@ -120,7 +120,7 @@ class TestPhotoServiceList:
 
     async def test_list_photos_with_album_filter(self):
         pg = AsyncMock()
-        service = PhotoService(pg=pg, minio=AsyncMock())
+        service = PhotoService(pg=pg, minio=AsyncMock(), kafka=AsyncMock())
         user_id = uuid.uuid4()
         album_id = uuid.uuid4()
         pg.get_photos.return_value = []
@@ -133,7 +133,7 @@ class TestPhotoServiceList:
     async def test_list_photos_passes_pagination(self):
         pg = AsyncMock()
         pg.get_photos.return_value = []
-        service = PhotoService(pg=pg, minio=AsyncMock())
+        service = PhotoService(pg=pg, minio=AsyncMock(), kafka=AsyncMock())
 
         await service.list_photos(user_id=uuid.uuid4(), limit=10, offset=20)
 
@@ -150,7 +150,7 @@ class TestPhotoServiceGetUrl:
         pg.get_photo.return_value = photo
         minio.get_presigned_url.return_value = 'http://minio/signed'
 
-        service = PhotoService(pg=pg, minio=minio)
+        service = PhotoService(pg=pg, minio=minio, kafka=AsyncMock())
         result_photo, url = await service.get_photo_url(uuid.uuid4(), uuid.uuid4())
 
         assert result_photo is photo
@@ -160,7 +160,7 @@ class TestPhotoServiceGetUrl:
         pg = AsyncMock()
         pg.get_photo.return_value = None
 
-        service = PhotoService(pg=pg, minio=AsyncMock())
+        service = PhotoService(pg=pg, minio=AsyncMock(), kafka=AsyncMock())
         with pytest.raises(HTTPException) as exc_info:
             await service.get_photo_url(uuid.uuid4(), uuid.uuid4())
         assert exc_info.value.status_code == 404
@@ -174,7 +174,7 @@ class TestPhotoServiceMove:
         pg.get_album.return_value = album
         pg.update_photo_album.return_value = photo
 
-        service = PhotoService(pg=pg, minio=AsyncMock())
+        service = PhotoService(pg=pg, minio=AsyncMock(), kafka=AsyncMock())
         result = await service.move_photo(uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
 
         pg.get_album.assert_awaited_once()
@@ -185,7 +185,7 @@ class TestPhotoServiceMove:
         photo = MagicMock()
         pg.update_photo_album.return_value = photo
 
-        service = PhotoService(pg=pg, minio=AsyncMock())
+        service = PhotoService(pg=pg, minio=AsyncMock(), kafka=AsyncMock())
         await service.move_photo(uuid.uuid4(), uuid.uuid4(), None)
 
         pg.get_album.assert_not_awaited()
@@ -194,7 +194,7 @@ class TestPhotoServiceMove:
         pg = AsyncMock()
         pg.get_album.return_value = None
 
-        service = PhotoService(pg=pg, minio=AsyncMock())
+        service = PhotoService(pg=pg, minio=AsyncMock(), kafka=AsyncMock())
         with pytest.raises(HTTPException) as exc_info:
             await service.move_photo(uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
         assert exc_info.value.status_code == 404
@@ -205,7 +205,7 @@ class TestPhotoServiceMove:
         pg.get_album.return_value = MagicMock()
         pg.update_photo_album.return_value = None
 
-        service = PhotoService(pg=pg, minio=AsyncMock())
+        service = PhotoService(pg=pg, minio=AsyncMock(), kafka=AsyncMock())
         with pytest.raises(HTTPException) as exc_info:
             await service.move_photo(uuid.uuid4(), uuid.uuid4(), uuid.uuid4())
         assert exc_info.value.status_code == 404
@@ -220,7 +220,7 @@ class TestPhotoServiceDelete:
         pg.get_photo.return_value = photo
         pg.delete_photo.return_value = True
 
-        service = PhotoService(pg=pg, minio=minio)
+        service = PhotoService(pg=pg, minio=minio, kafka=AsyncMock())
         await service.delete_photo(uuid.uuid4(), uuid.uuid4())
 
         minio.delete_file.assert_awaited_once_with('gallery', 'u/p')
@@ -229,7 +229,7 @@ class TestPhotoServiceDelete:
         pg = AsyncMock()
         pg.get_photo.return_value = None
 
-        service = PhotoService(pg=pg, minio=AsyncMock())
+        service = PhotoService(pg=pg, minio=AsyncMock(), kafka=AsyncMock())
         with pytest.raises(HTTPException) as exc_info:
             await service.delete_photo(uuid.uuid4(), uuid.uuid4())
         assert exc_info.value.status_code == 404
@@ -252,7 +252,7 @@ class TestPhotoServiceDelete:
         pg.delete_photo.side_effect = record_db
         minio.delete_file.side_effect = record_minio
 
-        service = PhotoService(pg=pg, minio=minio)
+        service = PhotoService(pg=pg, minio=minio, kafka=AsyncMock())
         await service.delete_photo(uuid.uuid4(), uuid.uuid4())
 
         assert call_order == ['db', 'minio']
