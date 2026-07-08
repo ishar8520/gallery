@@ -1,0 +1,47 @@
+import logging
+from email.mime.text import MIMEText
+
+import aiosmtplib
+import httpx
+
+from src.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+
+class MailService:
+    def __init__(self, http_client: httpx.AsyncClient) -> None:
+        self.http_client = http_client
+
+    async def _get_short_url(self, confirm_url: str, confirm_token: str, ttl: int) -> str:
+        resp = await self.http_client.post(
+            f'{settings.link_service.url}/link/api/v1/links',
+            json={'url': confirm_url, 'confirm_token': confirm_token, 'ttl': ttl},
+            timeout=5.0,
+        )
+        resp.raise_for_status()
+        return resp.json()['short_url']
+
+    async def send_confirmation_email(self, to: str, username: str, token: str) -> None:
+        confirm_url = f'{settings.auth.public_url}/auth/api/v1/confirm'
+        try:
+            short_url = await self._get_short_url(confirm_url, confirm_token=token, ttl=86400)
+        except Exception:
+            logger.exception('Failed to get short URL, falling back to full URL')
+            short_url = f'{confirm_url}?token={token}'
+
+        body = (
+            f'Привет, {username}!\n\n'
+            f'Для подтверждения регистрации перейдите по ссылке:\n{short_url}\n\n'
+            f'Ссылка действительна 24 часа.'
+        )
+        message = MIMEText(body, 'plain', 'utf-8')
+        message['From'] = settings.smtp.from_email
+        message['To'] = to
+        message['Subject'] = 'Подтверждение регистрации в Gallery'
+        await aiosmtplib.send(
+            message,
+            hostname=settings.smtp.host,
+            port=settings.smtp.port,
+        )
+        logger.info('Confirmation email sent to %s', to)

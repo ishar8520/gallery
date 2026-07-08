@@ -1,3 +1,4 @@
+import json
 import uuid
 from unittest.mock import AsyncMock
 
@@ -16,8 +17,18 @@ def pg_session():
 
 
 @pytest.fixture
-def service(pg_session):
-    return UserService(postgres=pg_session)
+def redis_mock():
+    return AsyncMock()
+
+
+@pytest.fixture
+def kafka_mock():
+    return AsyncMock()
+
+
+@pytest.fixture
+def service(pg_session, redis_mock, kafka_mock):
+    return UserService(postgres=pg_session, redis=redis_mock, kafka_producer=kafka_mock)
 
 
 class TestIsValidEmail:
@@ -29,50 +40,94 @@ class TestIsValidEmail:
 
 
 class TestGetRegister:
-    async def test_success(self, service, pg_session):
+    async def test_success_stores_in_redis(self, service, pg_session, redis_mock, kafka_mock):
         pg_session.get_user_by_username.return_value = None
         pg_session.get_user_by_email.return_value = None
-        pg_session.get_role.return_value = Role(role="USER")
-        new_id = uuid.uuid4()
-        pg_session.add_user.return_value = new_id
+        # set_nx returns True (success) for both username and email
+        redis_mock.set_nx.return_value = True
 
         request_model = RequestRegistration(
             username="alice", email="alice@example.com", password="secret123"
         )
-        result = await service.get_register(request_model)
+        await service.get_register(request_model)
 
-        assert result == new_id
-        pg_session.add_user.assert_awaited_once()
-        pg_session.add_user_role.assert_awaited_once()
+        pg_session.add_user.assert_not_awaited()
+        # set_nx × 2 (username + email) + set_value × 1 (pending data)
+        assert redis_mock.set_nx.await_count == 2
+        assert redis_mock.set_value.await_count == 1
+        kafka_mock.send_and_wait.assert_awaited_once()
+        event = kafka_mock.send_and_wait.call_args.args[1]
+        assert event['event_type'] == 'email_confirmation_requested'
+        assert event['payload']['email'] == 'alice@example.com'
 
-    async def test_username_already_exists(self, service, pg_session):
+    async def test_username_reserved_in_redis(self, service, pg_session, redis_mock):
+        pg_session.get_user_by_username.return_value = None
+        pg_session.get_user_by_email.return_value = None
+        # set_nx returns False → username already reserved
+        redis_mock.set_nx.return_value = False
+
+        request_model = RequestRegistration(
+            username="alice", email="alice@example.com", password="secret123"
+        )
+        with pytest.raises(exceptions.UsernameExistException):
+            await service.get_register(request_model)
+
+    async def test_username_exists_in_db(self, service, pg_session, redis_mock):
         pg_session.get_user_by_username.return_value = User(username="alice")
 
         request_model = RequestRegistration(
             username="alice", email="alice@example.com", password="secret123"
         )
-        with pytest.raises(exceptions.UserExistException):
+        with pytest.raises(exceptions.UsernameExistException):
             await service.get_register(request_model)
 
-    async def test_email_already_exists(self, service, pg_session):
+    async def test_email_reserved_in_redis(self, service, pg_session, redis_mock):
         pg_session.get_user_by_username.return_value = None
-        pg_session.get_user_by_email.return_value = User(email="alice@example.com")
+        pg_session.get_user_by_email.return_value = None
+        # username reserved OK, email already taken
+        redis_mock.set_nx.side_effect = [True, False]
 
         request_model = RequestRegistration(
             username="alice", email="alice@example.com", password="secret123"
         )
-        with pytest.raises(exceptions.UserExistException):
+        with pytest.raises(exceptions.EmailExistException):
             await service.get_register(request_model)
 
-    async def test_invalid_email(self, service, pg_session):
+    async def test_invalid_email(self, service, pg_session, redis_mock):
         pg_session.get_user_by_username.return_value = None
-        pg_session.get_user_by_email.return_value = None
+        redis_mock.get_value.return_value = None
 
         request_model = RequestRegistration(
             username="alice", email="not-an-email", password="secret123"
         )
         with pytest.raises(exceptions.BadEmailException):
             await service.get_register(request_model)
+
+
+class TestConfirmRegistration:
+    async def test_success_creates_user_in_db(self, service, pg_session, redis_mock):
+        token = str(uuid.uuid4())
+        pending = json.dumps({
+            'username': 'alice',
+            'email': 'alice@example.com',
+            'password_hash': '$2b$12$hash',
+        })
+        redis_mock.get_value.return_value = pending
+        pg_session.get_role.return_value = Role(role="USER")
+        new_id = uuid.uuid4()
+        pg_session.add_user.return_value = new_id
+
+        result = await service.confirm_registration(token)
+
+        assert result == new_id
+        pg_session.add_user.assert_awaited_once()
+        pg_session.add_user_role.assert_awaited_once()
+        assert redis_mock.drop_value.await_count == 3
+
+    async def test_invalid_token_raises(self, service, redis_mock):
+        redis_mock.get_value.return_value = None
+        with pytest.raises(exceptions.ConfirmationTokenExpiredException):
+            await service.confirm_registration('nonexistent-token')
 
 
 class TestGetUser:

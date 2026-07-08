@@ -1,14 +1,22 @@
 import io
+import logging
 import uuid
 from datetime import UTC, datetime
 from typing import Annotated
 
+from aiokafka import AIOKafkaProducer
 from fastapi import Depends, HTTPException, UploadFile, status
 from PIL import Image, UnidentifiedImageError
 
 from src.db.minio import MinioClient, S3Error, get_minio
 from src.dependences.postgres import GalleryPostgresDep, SortField, SortOrder, get_async_postgres
+from src.kafka.events import photo_deleted_event, photo_uploaded_event
+from src.kafka.producer import get_kafka_producer
 from src.models.photo import Photo
+
+logger = logging.getLogger(__name__)
+
+UGC_TOPIC = 'ugc-events'
 
 ALLOWED_MIME_TYPES = {'image/jpeg', 'image/png', 'image/gif', 'image/webp'}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50 MB
@@ -34,10 +42,12 @@ def _extract_exif_date(data: bytes, mime_type: str) -> datetime | None:
 class PhotoService:
     pg: GalleryPostgresDep
     minio: MinioClient
+    kafka: AIOKafkaProducer
 
-    def __init__(self, pg: GalleryPostgresDep, minio: MinioClient) -> None:
+    def __init__(self, pg: GalleryPostgresDep, minio: MinioClient, kafka: AIOKafkaProducer) -> None:
         self.pg = pg
         self.minio = minio
+        self.kafka = kafka
 
     async def upload_photo(
         self,
@@ -97,7 +107,15 @@ class PhotoService:
             mime_type=mime_type,
             exif_date=exif_date,
         )
-        return await self.pg.add_photo(photo)
+        saved = await self.pg.add_photo(photo)
+        try:
+            await self.kafka.send_and_wait(
+                UGC_TOPIC,
+                photo_uploaded_event(user_id, photo_id, title, len(data), mime_type),
+            )
+        except Exception:
+            logger.exception('Failed to send photo_uploaded event to Kafka')
+        return saved
 
     async def list_photos(
         self,
@@ -151,10 +169,18 @@ class PhotoService:
             raise HTTPException(
                 status_code=status.HTTP_502_BAD_GATEWAY, detail=f'Storage error: {exc}'
             ) from exc
+        try:
+            await self.kafka.send_and_wait(
+                UGC_TOPIC,
+                photo_deleted_event(user_id, photo.id),
+            )
+        except Exception:
+            logger.exception('Failed to send photo_deleted event to Kafka')
 
 
 def get_photo_service(
     pg: Annotated[GalleryPostgresDep, Depends(get_async_postgres)],
     minio: Annotated[MinioClient, Depends(get_minio)],
+    kafka: Annotated[AIOKafkaProducer, Depends(get_kafka_producer)],
 ) -> PhotoService:
-    return PhotoService(pg=pg, minio=minio)
+    return PhotoService(pg=pg, minio=minio, kafka=kafka)
