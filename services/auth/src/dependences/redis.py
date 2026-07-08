@@ -23,5 +23,9 @@ class RedisDep:
     def drop_value(self, key: str):
         return self.session.delete(key)
 
+    def set_nx(self, key: str, value: str, expires: int):
+        """SET key value EX expires NX — атомарно, только если ключ не существует."""
+        return self.session.set(key, value, ex=expires, nx=True)
+
 async def get_async_redis() -> RedisDep:
     return RedisDep()

@@ -1,4 +1,5 @@
-from unittest.mock import AsyncMock, patch
+import json
+from unittest.mock import AsyncMock
 
 import pytest
 from fastapi.testclient import TestClient
@@ -40,10 +41,22 @@ class TestCreateLink:
         call_kwargs = redis_mock.set.call_args
         assert call_kwargs.kwargs.get('ex') == 86400
 
+    def test_stores_confirm_token_when_provided(self, client, redis_mock):
+        redis_mock.set = AsyncMock()
+        resp = client.post(
+            '/link/api/v1/links',
+            json={'url': '/auth/api/v1/confirm', 'confirm_token': 'uuid-123', 'ttl': 3600},
+        )
+        assert resp.status_code == 201
+        stored_value = json.loads(redis_mock.set.call_args.args[1])
+        assert stored_value['confirm_token'] == 'uuid-123'
+        assert stored_value['url'] == '/auth/api/v1/confirm'
+
 
 class TestResolveLink:
     def test_redirects_to_stored_url(self, client, redis_mock):
-        redis_mock.get = AsyncMock(return_value='http://example.com/target')
+        stored = json.dumps({'url': 'http://example.com/target', 'confirm_token': None})
+        redis_mock.get = AsyncMock(return_value=stored)
         resp = client.get('/s/abc12345', follow_redirects=False)
         assert resp.status_code == 302
         assert resp.headers['location'] == 'http://example.com/target'
@@ -52,3 +65,16 @@ class TestResolveLink:
         redis_mock.get = AsyncMock(return_value=None)
         resp = client.get('/s/nonexistent', follow_redirects=False)
         assert resp.status_code == 404
+
+    def test_returns_html_form_when_confirm_token_present(self, client, redis_mock):
+        stored = json.dumps({
+            'url': 'http://auth/auth/api/v1/confirm',
+            'confirm_token': 'secret-uuid',
+        })
+        redis_mock.get = AsyncMock(return_value=stored)
+        resp = client.get('/s/abc12345', follow_redirects=False)
+        assert resp.status_code == 200
+        assert 'text/html' in resp.headers['content-type']
+        assert 'secret-uuid' in resp.text
+        assert 'method="POST"' in resp.text
+        assert 'http://auth/auth/api/v1/confirm' in resp.text

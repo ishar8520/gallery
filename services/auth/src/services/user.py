@@ -46,23 +46,25 @@ class UserService:
         if not self.is_valid_email(request_model.email):
             raise exceptions.BadEmailException
 
-        user = await self.pg_session.get_user_by_username(request_model.username)
-        reserved_username = await self.redis_session.get_value(
-            f'reserve:username:{request_model.username}'
-        )
-        if user or reserved_username:
+        # Проверяем подтверждённых пользователей в БД
+        if await self.pg_session.get_user_by_username(request_model.username):
             raise exceptions.UsernameExistException
+        if await self.pg_session.get_user_by_email(request_model.email):
+            raise exceptions.EmailExistException
 
-        email = await self.pg_session.get_user_by_email(request_model.email)
-        reserved_email = await self.redis_session.get_value(
-            f'reserve:email:{request_model.email}'
-        )
-        if email or reserved_email:
+        # Атомарно резервируем в Redis — защита от race condition
+        ttl = settings.registration.ttl_seconds
+        if not await self.redis_session.set_nx(
+            f'reserve:username:{request_model.username}', '1', ttl
+        ):
+            raise exceptions.UsernameExistException
+        if not await self.redis_session.set_nx(
+            f'reserve:email:{request_model.email}', '1', ttl
+        ):
+            await self.redis_session.drop_value(f'reserve:username:{request_model.username}')
             raise exceptions.EmailExistException
 
         token = str(uuid.uuid4())
-        ttl = settings.registration.ttl_seconds
-
         password = request_model.password.encode('utf-8')
         salt = bcrypt.gensalt()
         password_hash = bcrypt.hashpw(password, salt).decode('utf-8')
@@ -73,8 +75,6 @@ class UserService:
             'email': request_model.email,
         })
         await self.redis_session.set_value(f'pending:{token}', pending_data, ttl)
-        await self.redis_session.set_value(f'reserve:username:{request_model.username}', '1', ttl)
-        await self.redis_session.set_value(f'reserve:email:{request_model.email}', '1', ttl)
 
         if self.kafka:
             try:

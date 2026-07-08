@@ -1,7 +1,14 @@
 from unittest.mock import AsyncMock, patch
 
+import httpx
+
 from src.kafka.consumer import handle_event
 from src.services.mail import MailService
+
+
+def make_service(mock_client=None):
+    client = mock_client or AsyncMock(spec=httpx.AsyncClient)
+    return MailService(http_client=client)
 
 
 class TestHandleEvent:
@@ -42,7 +49,7 @@ class TestMailService:
             patch.object(MailService, '_get_short_url', new_callable=AsyncMock) as mock_short,
         ):
             mock_short.return_value = short_url
-            service = MailService()
+            service = make_service()
             await service.send_confirmation_email(
                 to='alice@example.com',
                 username='alice',
@@ -60,7 +67,7 @@ class TestMailService:
             patch('src.services.mail.aiosmtplib.send', new_callable=AsyncMock) as mock_send,
             patch.object(MailService, '_get_short_url', side_effect=Exception('link down')),
         ):
-            service = MailService()
+            service = make_service()
             await service.send_confirmation_email(
                 to='alice@example.com',
                 username='alice',

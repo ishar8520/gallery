@@ -43,7 +43,8 @@ class TestGetRegister:
     async def test_success_stores_in_redis(self, service, pg_session, redis_mock, kafka_mock):
         pg_session.get_user_by_username.return_value = None
         pg_session.get_user_by_email.return_value = None
-        redis_mock.get_value.return_value = None
+        # set_nx returns True (success) for both username and email
+        redis_mock.set_nx.return_value = True
 
         request_model = RequestRegistration(
             username="alice", email="alice@example.com", password="secret123"
@@ -51,7 +52,9 @@ class TestGetRegister:
         await service.get_register(request_model)
 
         pg_session.add_user.assert_not_awaited()
-        assert redis_mock.set_value.await_count == 3
+        # set_nx × 2 (username + email) + set_value × 1 (pending data)
+        assert redis_mock.set_nx.await_count == 2
+        assert redis_mock.set_value.await_count == 1
         kafka_mock.send_and_wait.assert_awaited_once()
         event = kafka_mock.send_and_wait.call_args.args[1]
         assert event['event_type'] == 'email_confirmation_requested'
@@ -59,7 +62,9 @@ class TestGetRegister:
 
     async def test_username_reserved_in_redis(self, service, pg_session, redis_mock):
         pg_session.get_user_by_username.return_value = None
-        redis_mock.get_value.side_effect = ['1', None]
+        pg_session.get_user_by_email.return_value = None
+        # set_nx returns False → username already reserved
+        redis_mock.set_nx.return_value = False
 
         request_model = RequestRegistration(
             username="alice", email="alice@example.com", password="secret123"
@@ -69,7 +74,6 @@ class TestGetRegister:
 
     async def test_username_exists_in_db(self, service, pg_session, redis_mock):
         pg_session.get_user_by_username.return_value = User(username="alice")
-        redis_mock.get_value.return_value = None
 
         request_model = RequestRegistration(
             username="alice", email="alice@example.com", password="secret123"
@@ -80,8 +84,8 @@ class TestGetRegister:
     async def test_email_reserved_in_redis(self, service, pg_session, redis_mock):
         pg_session.get_user_by_username.return_value = None
         pg_session.get_user_by_email.return_value = None
-        # first call: reserve:username → None, second call: reserve:email → '1'
-        redis_mock.get_value.side_effect = [None, '1']
+        # username reserved OK, email already taken
+        redis_mock.set_nx.side_effect = [True, False]
 
         request_model = RequestRegistration(
             username="alice", email="alice@example.com", password="secret123"

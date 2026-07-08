@@ -2,6 +2,7 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI
 
 from src.kafka.consumer import start_consumer
@@ -13,14 +14,15 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    mail_service = MailService()
-    task = asyncio.create_task(start_consumer(mail_service))
-    yield
-    task.cancel()
-    try:
-        await task
-    except asyncio.CancelledError:
-        pass
+    async with httpx.AsyncClient() as http_client:
+        mail_service = MailService(http_client=http_client)
+        task = asyncio.create_task(start_consumer(mail_service))
+        yield
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(
