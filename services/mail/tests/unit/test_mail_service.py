@@ -46,7 +46,7 @@ class TestMailService:
         short_url = 'http://localhost:8000/s/abc123'
         with (
             patch('src.services.mail.aiosmtplib.send', new_callable=AsyncMock) as mock_send,
-            patch.object(MailService, '_get_short_url', new_callable=AsyncMock) as mock_short,
+            patch.object(MailService, '_get_short_url', new_callable=AsyncMock) as mock_short,  # noqa: E501
         ):
             mock_short.return_value = short_url
             service = make_service()

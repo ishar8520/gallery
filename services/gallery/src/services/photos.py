@@ -1,3 +1,4 @@
+import asyncio
 import io
 import logging
 import uuid
@@ -12,6 +13,7 @@ from src.db.minio import MinioClient, S3Error, get_minio
 from src.dependences.postgres import GalleryPostgresDep, SortField, SortOrder, get_async_postgres
 from src.kafka.events import photo_deleted_event, photo_uploaded_event
 from src.kafka.producer import get_kafka_producer
+from src.api.v1.models.photos import ResponsePhoto
 from src.models.photo import Photo
 
 logger = logging.getLogger(__name__)
@@ -121,14 +123,31 @@ class PhotoService:
         self,
         user_id: uuid.UUID,
         album_id: uuid.UUID | None = None,
+        no_album: bool = False,
         sort_by: SortField = SortField.UPLOADED_AT,
         order: SortOrder = SortOrder.DESC,
         limit: int = 100,
         offset: int = 0,
-    ) -> list[Photo]:
-        return await self.pg.get_photos(
-            user_id, album_id=album_id, sort_by=sort_by, order=order, limit=limit, offset=offset
+    ) -> list[ResponsePhoto]:
+        photos = await self.pg.get_photos(
+            user_id,
+            album_id=album_id,
+            no_album=no_album,
+            sort_by=sort_by,
+            order=order,
+            limit=limit,
+            offset=offset,
         )
+
+        async def _with_url(photo: Photo) -> ResponsePhoto:
+            r = ResponsePhoto.model_validate(photo)
+            try:
+                r.url = await self.minio.get_presigned_url(photo.bucket_name, photo.object_name)
+            except S3Error:
+                pass
+            return r
+
+        return list(await asyncio.gather(*[_with_url(p) for p in photos]))
 
     async def get_photo_url(self, photo_id: uuid.UUID, user_id: uuid.UUID) -> tuple[Photo, str]:
         photo = await self.pg.get_photo(photo_id, user_id)

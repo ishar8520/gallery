@@ -32,6 +32,7 @@ class MinioConfig(BaseSettings):
     user: str
     password: str
     bucket: str = 'gallery'
+    public_host: str = ''  # MINIO_PUBLIC_HOST — browser-accessible host:port for presigned URLs
 
 
 class AuthConfig(BaseSettings):

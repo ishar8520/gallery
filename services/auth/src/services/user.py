@@ -11,7 +11,7 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.v1.models.registration import RequestRegistration
-from src.api.v1.models.user import RequestPatchUser, ResponseUser
+from src.api.v1.models.user import RequestChangePassword, RequestPatchUser, ResponseUser, ResponseUserAdmin
 from src.core.config import settings
 from src.dependences.postgres import PostgresDep, get_async_postgres
 from src.dependences.redis import RedisDep, get_async_redis
@@ -138,6 +138,33 @@ class UserService:
         if user_update.email not in [user.email, None]:
             user.email = user_update.email
         return await self.pg_session.add_user(user)
+
+    async def get_all_users(self) -> list[ResponseUserAdmin]:
+        """Получение списка всех пользователей с ролями (только для ADMIN)"""
+        users = await self.pg_session.get_all_users()
+        result = []
+        for user in users:
+            roles = [ur.role.role.value for ur in user.user_roles]
+            result.append(ResponseUserAdmin(
+                user_id=user.id,
+                username=user.username,
+                email=user.email,
+                roles=roles,
+            ))
+        return result
+
+    async def change_password(
+        self, user_id: UUID, request: RequestChangePassword
+    ) -> None:
+        """Смена пароля: проверяет текущий пароль, хэширует и сохраняет новый"""
+        user = await self.pg_session.get_user_by_id(user_id)
+        if not user:
+            raise exceptions.UserNotFoundException
+        if not bcrypt.checkpw(request.current_password.encode('utf-8'), user.password.encode('utf-8')):
+            raise exceptions.BadCredsException
+        salt = bcrypt.gensalt()
+        user.password = bcrypt.hashpw(request.new_password.encode('utf-8'), salt).decode('utf-8')
+        await self.pg_session.add_user(user)
 
     async def check_exist_user(self, current_user: User, update_user: RequestPatchUser) -> bool:
         """Проверка существания пользователя в БД"""

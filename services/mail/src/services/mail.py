@@ -13,22 +13,22 @@ class MailService:
     def __init__(self, http_client: httpx.AsyncClient) -> None:
         self.http_client = http_client
 
-    async def _get_short_url(self, confirm_url: str, confirm_token: str, ttl: int) -> str:
+    async def _get_short_url(self, url: str, ttl: int) -> str:
         resp = await self.http_client.post(
             f'{settings.link_service.url}/link/api/v1/links',
-            json={'url': confirm_url, 'confirm_token': confirm_token, 'ttl': ttl},
+            json={'url': url, 'ttl': ttl},
             timeout=5.0,
         )
         resp.raise_for_status()
         return resp.json()['short_url']
 
     async def send_confirmation_email(self, to: str, username: str, token: str) -> None:
-        confirm_url = f'{settings.auth.public_url}/auth/api/v1/confirm'
+        confirm_url = f'{settings.auth.public_url}/confirm?token={token}'
         try:
-            short_url = await self._get_short_url(confirm_url, confirm_token=token, ttl=86400)
+            short_url = await self._get_short_url(confirm_url, ttl=86400)
         except Exception:
             logger.exception('Failed to get short URL, falling back to full URL')
-            short_url = f'{confirm_url}?token={token}'
+            short_url = confirm_url
 
         body = (
             f'Привет, {username}!\n\n'
