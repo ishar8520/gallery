@@ -29,6 +29,23 @@ class TestHandleEvent:
             token='test-token-123',
         )
 
+    async def test_password_reset_requested_calls_send_reset(self):
+        mail_service = AsyncMock(spec=MailService)
+        event = {
+            'event_type': 'password_reset_requested',
+            'payload': {
+                'email': 'alice@example.com',
+                'username': 'alice',
+                'token': 'reset-token-456',
+            },
+        }
+        await handle_event(event, mail_service)
+        mail_service.send_reset_password_email.assert_awaited_once_with(
+            to='alice@example.com',
+            username='alice',
+            token='reset-token-456',
+        )
+
     async def test_unknown_event_type_does_not_raise(self):
         mail_service = AsyncMock(spec=MailService)
         event = {'event_type': 'unknown_event', 'payload': {}}
@@ -61,6 +78,42 @@ class TestMailService:
             body = msg.get_payload(decode=True).decode()
             assert short_url in body
             assert 'alice' in body
+
+    async def test_send_reset_password_email(self):
+        short_url = 'http://localhost:8000/s/xyz789'
+        with (
+            patch('src.services.mail.aiosmtplib.send', new_callable=AsyncMock) as mock_send,
+            patch.object(MailService, '_get_short_url', new_callable=AsyncMock) as mock_short,
+        ):
+            mock_short.return_value = short_url
+            service = make_service()
+            await service.send_reset_password_email(
+                to='alice@example.com',
+                username='alice',
+                token='reset-token-456',
+            )
+            mock_send.assert_awaited_once()
+            msg = mock_send.call_args.args[0]
+            assert msg['To'] == 'alice@example.com'
+            body = msg.get_payload(decode=True).decode()
+            assert short_url in body
+            assert 'alice' in body
+
+    async def test_send_reset_password_email_falls_back_on_link_service_error(self):
+        with (
+            patch('src.services.mail.aiosmtplib.send', new_callable=AsyncMock) as mock_send,
+            patch.object(MailService, '_get_short_url', side_effect=Exception('link down')),
+        ):
+            service = make_service()
+            await service.send_reset_password_email(
+                to='alice@example.com',
+                username='alice',
+                token='reset-token-456',
+            )
+            mock_send.assert_awaited_once()
+            msg = mock_send.call_args.args[0]
+            body = msg.get_payload(decode=True).decode()
+            assert 'reset-password?token=reset-token-456' in body
 
     async def test_send_confirmation_email_falls_back_on_link_service_error(self):
         with (

@@ -51,7 +51,10 @@ async function submit() {
         </button>
       </form>
 
-      <p class="auth-link" style="margin-top:20px">
+      <p class="auth-link" style="margin-top:16px">
+        <RouterLink to="/forgot-password">Забыли пароль?</RouterLink>
+      </p>
+      <p class="auth-link" style="margin-top:8px">
         Нет аккаунта? <RouterLink to="/register">Зарегистрироваться</RouterLink>
       </p>
     </div>

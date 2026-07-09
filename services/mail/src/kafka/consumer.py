@@ -20,6 +20,13 @@ async def handle_event(event: dict, mail_service: MailService) -> None:
             username=payload['username'],
             token=payload['token'],
         )
+    elif event_type == 'password_reset_requested':
+        payload = event['payload']
+        await mail_service.send_reset_password_email(
+            to=payload['email'],
+            username=payload['username'],
+            token=payload['token'],
+        )
     else:
         logger.warning('Unknown event type: %s', event_type)
 

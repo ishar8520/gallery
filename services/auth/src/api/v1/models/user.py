@@ -24,3 +24,12 @@ class RequestPatchUser(BaseModel):
 class RequestChangePassword(BaseModel):
     current_password: str
     new_password: str
+
+
+class RequestForgotPassword(BaseModel):
+    email: str
+
+
+class RequestResetPassword(BaseModel):
+    token: str
+    new_password: str
