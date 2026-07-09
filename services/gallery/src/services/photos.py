@@ -9,11 +9,11 @@ from aiokafka import AIOKafkaProducer
 from fastapi import Depends, HTTPException, UploadFile, status
 from PIL import Image, UnidentifiedImageError
 
+from src.api.v1.models.photos import ResponsePhoto
 from src.db.minio import MinioClient, S3Error, get_minio
 from src.dependences.postgres import GalleryPostgresDep, SortField, SortOrder, get_async_postgres
 from src.kafka.events import photo_deleted_event, photo_uploaded_event
 from src.kafka.producer import get_kafka_producer
-from src.api.v1.models.photos import ResponsePhoto
 from src.models.photo import Photo
 
 logger = logging.getLogger(__name__)
