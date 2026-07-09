@@ -11,7 +11,12 @@ from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.api.v1.models.registration import RequestRegistration
-from src.api.v1.models.user import RequestChangePassword, RequestPatchUser, ResponseUser, ResponseUserAdmin
+from src.api.v1.models.user import (
+    RequestChangePassword,
+    RequestPatchUser,
+    ResponseUser,
+    ResponseUserAdmin,
+)
 from src.core.config import settings
 from src.dependences.postgres import PostgresDep, get_async_postgres
 from src.dependences.redis import RedisDep, get_async_redis
@@ -160,7 +165,10 @@ class UserService:
         user = await self.pg_session.get_user_by_id(user_id)
         if not user:
             raise exceptions.UserNotFoundException
-        if not bcrypt.checkpw(request.current_password.encode('utf-8'), user.password.encode('utf-8')):
+        current_ok = bcrypt.checkpw(
+            request.current_password.encode('utf-8'), user.password.encode('utf-8')
+        )
+        if not current_ok:
             raise exceptions.BadCredsException
         salt = bcrypt.gensalt()
         user.password = bcrypt.hashpw(request.new_password.encode('utf-8'), salt).decode('utf-8')
