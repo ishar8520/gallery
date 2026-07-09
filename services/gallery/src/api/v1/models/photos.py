@@ -14,6 +14,7 @@ class ResponsePhoto(BaseModel):
     mime_type: str
     exif_date: datetime | None
     uploaded_at: datetime
+    url: str | None = None  # presigned URL; заполняется при листинге
 
     model_config = {'from_attributes': True}
 

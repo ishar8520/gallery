@@ -1,7 +1,7 @@
 services:
   nginx:
     container_name: nginx
-    build: 
+    build:
       context: './services/nginx'
     networks:
       - gallery-network
@@ -16,6 +16,15 @@ services:
         condition: service_healthy
       link-service:
         condition: service_healthy
+      frontend:
+        condition: service_started
+
+  frontend:
+    container_name: frontend
+    build:
+      context: ./services/frontend
+    networks:
+      - gallery-network
 
   auth-service:
     container_name: auth-service
@@ -102,6 +111,7 @@ services:
       - MINIO_USER=$MINIO_USER
       - MINIO_PASSWORD=$MINIO_PASSWORD
       - MINIO_BUCKET=gallery
+      - MINIO_PUBLIC_HOST=${MINIO_PUBLIC_HOST:-localhost:8000}
       - AUTH_SERVICE_HOST=auth-service
       - AUTH_SERVICE_PORT=8000
       - KAFKA_BOOTSTRAP_SERVERS=kafka:9092

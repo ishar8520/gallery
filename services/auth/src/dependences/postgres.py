@@ -97,6 +97,15 @@ class PostgresDep:
         user = result.scalar_one_or_none()
         return [ur.role.role for ur in user.user_roles]
 
+    async def get_all_users(self) -> list[User]:
+        stmt = (
+            select(User)
+            .options(selectinload(User.user_roles).selectinload(UserRoles.role))
+            .order_by(User.username)
+        )
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
     async def get_role(self, role: Roles):
         stmt = (
             select(Role)

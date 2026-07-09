@@ -53,12 +53,24 @@ class MinioClient:
         expires: timedelta = timedelta(hours=1),
     ) -> str:
         """Возвращает presigned URL для скачивания файла."""
-        return await asyncio.to_thread(
+        from urllib.parse import urlparse, urlunparse
+
+        url = await asyncio.to_thread(
             self.client.presigned_get_object,
             bucket_name,
             object_name,
             expires=expires,
         )
+        # Переписываем внутренний хост на публичный и добавляем /minio/ префикс.
+        # nginx проксирует /minio/ → minio:9000 с Host: minio:9000, поэтому
+        # подпись presigned URL остаётся валидной.
+        if settings.minio.public_host:
+            parsed = urlparse(url)
+            url = urlunparse(parsed._replace(
+                netloc=settings.minio.public_host,
+                path='/minio' + parsed.path,
+            ))
+        return url
 
     async def delete_file(self, bucket_name: str, object_name: str) -> None:
         await asyncio.to_thread(self.client.remove_object, bucket_name, object_name)

@@ -53,6 +53,7 @@ class GalleryPostgresDep:
         self,
         user_id: uuid.UUID,
         album_id: uuid.UUID | None = None,
+        no_album: bool = False,
         sort_by: SortField = SortField.UPLOADED_AT,
         order: SortOrder = SortOrder.DESC,
         limit: int = 100,
@@ -63,6 +64,8 @@ class GalleryPostgresDep:
         stmt = select(Photo).where(Photo.user_id == user_id)
         if album_id is not None:
             stmt = stmt.where(Photo.album_id == album_id)
+        elif no_album:
+            stmt = stmt.where(Photo.album_id.is_(None))
         stmt = stmt.order_by(order_clause).limit(limit).offset(offset)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
