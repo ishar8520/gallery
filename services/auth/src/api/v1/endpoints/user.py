@@ -4,7 +4,12 @@ from typing import Annotated
 from async_fastapi_jwt_auth.exceptions import InvalidHeaderError, JWTDecodeError, MissingTokenError
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from src.api.v1.models.user import RequestChangePassword, RequestPatchUser, ResponseUser, ResponseUserAdmin
+from src.api.v1.models.user import (
+    RequestChangePassword,
+    RequestPatchUser,
+    ResponseUser,
+    ResponseUserAdmin,
+)
 from src.models.enums import Roles
 from src.services import exceptions
 from src.services.auth import AuthJWT, AuthService, auth_jwt_dep, get_auth_service
