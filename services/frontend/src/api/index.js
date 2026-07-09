@@ -43,7 +43,7 @@ api.interceptors.response.use(
         refreshQueue = []
         return api(original)
       } catch {
-        refreshQueue.forEach(p => p.reject())
+        refreshQueue.forEach(p => p.reject(err))
         refreshQueue = []
         tokenRef.value = null
         return Promise.reject(err)

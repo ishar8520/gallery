@@ -13,6 +13,7 @@ const albums        = ref([])
 // null = все фото, 'NO_ALBUM' = без папки, <uuid> = конкретный альбом
 const selectedAlbum = ref(null)
 const loading       = ref(false)
+const loadError     = ref('')
 
 // ── Групповое выделение ───────────────────────────────────
 const selectedIds   = ref(new Set())
@@ -44,9 +45,14 @@ const selectionCount = computed(() => selectedIds.value.size)
 // ── Bulk удаление ─────────────────────────────────────────
 async function bulkDelete() {
   if (!confirm(`Удалить ${selectionCount.value} фото? Это действие необратимо.`)) return
-  await Promise.all([...selectedIds.value].map(id => photosApi.delete(id)))
-  photos.value = photos.value.filter(p => !selectedIds.value.has(p.id))
-  selectedIds.value = new Set()
+  try {
+    await Promise.all([...selectedIds.value].map(id => photosApi.delete(id)))
+    photos.value = photos.value.filter(p => !selectedIds.value.has(p.id))
+    selectedIds.value = new Set()
+  } catch (e) {
+    alert(e.response?.data?.detail || 'Не удалось удалить часть фотографий')
+    await loadPhotos()
+  }
 }
 
 // ── Bulk перемещение ──────────────────────────────────────
@@ -71,12 +77,17 @@ async function bulkMove() {
 
 // ── Загрузка данных ───────────────────────────────────────
 async function loadAlbums() {
-  const { data } = await albumsApi.list()
-  albums.value = data
+  try {
+    const { data } = await albumsApi.list()
+    albums.value = data
+  } catch (e) {
+    loadError.value = e.response?.data?.detail || 'Не удалось загрузить альбомы'
+  }
 }
 
 async function loadPhotos() {
   loading.value = true
+  loadError.value = ''
   clearSelection()
   try {
     let params = {}
@@ -87,6 +98,8 @@ async function loadPhotos() {
     }
     const { data } = await photosApi.list(params)
     photos.value = data
+  } catch (e) {
+    loadError.value = e.response?.data?.detail || 'Не удалось загрузить фотографии'
   } finally {
     loading.value = false
   }
@@ -279,6 +292,9 @@ async function commitRename(id) {
           <button class="btn btn-danger btn-sm" @click="bulkDelete">Удалить</button>
           <button class="btn btn-ghost btn-sm" style="margin-left:auto" @click="clearSelection">✕ Снять выделение</button>
         </div>
+
+        <!-- Error -->
+        <div v-if="loadError" class="error-msg" style="margin-bottom:16px">{{ loadError }}</div>
 
         <!-- States -->
         <div v-if="loading" class="empty-state">

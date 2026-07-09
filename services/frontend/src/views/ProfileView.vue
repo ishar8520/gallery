@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 import AppHeader from '../components/AppHeader.vue'
@@ -6,7 +7,7 @@ import AppHeader from '../components/AppHeader.vue'
 const auth   = useAuthStore()
 const router = useRouter()
 
-const isAdmin = auth.user?.roles?.includes('ADMIN')
+const isAdmin = computed(() => auth.user?.roles?.includes('ADMIN') ?? false)
 </script>
 
 <template>
