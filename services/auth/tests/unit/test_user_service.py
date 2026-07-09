@@ -175,3 +175,53 @@ class TestPatchUser:
         update = RequestPatchUser(username="x", email="x@example.com")
         with pytest.raises(exceptions.UserNotFoundException):
             await service.patch_user(user_id=uuid.uuid4(), user_update=update)
+
+
+class TestForgotPassword:
+    async def test_sends_kafka_event_when_user_exists(
+        self, service, pg_session, redis_mock, kafka_mock
+    ):
+        user_id = uuid.uuid4()
+        pg_session.get_user_by_email.return_value = User(
+            id=user_id, username='alice', email='alice@example.com'
+        )
+        await service.forgot_password('alice@example.com')
+
+        redis_mock.set_value.assert_awaited_once()
+        key = redis_mock.set_value.call_args.args[0]
+        assert key.startswith('reset:')
+        kafka_mock.send_and_wait.assert_awaited_once()
+        event = kafka_mock.send_and_wait.call_args.args[1]
+        assert event['event_type'] == 'password_reset_requested'
+        assert event['payload']['email'] == 'alice@example.com'
+
+    async def test_silent_when_user_not_found(self, service, pg_session, redis_mock, kafka_mock):
+        pg_session.get_user_by_email.return_value = None
+        await service.forgot_password('nobody@example.com')
+        redis_mock.set_value.assert_not_awaited()
+        kafka_mock.send_and_wait.assert_not_awaited()
+
+
+class TestResetPassword:
+    async def test_success_updates_password(self, service, pg_session, redis_mock):
+        user_id = uuid.uuid4()
+        user = User(id=user_id, username='alice', password='old_hash')
+        redis_mock.get_value.return_value = str(user_id)
+        pg_session.get_user_by_id.return_value = user
+
+        await service.reset_password('valid-token', 'new_secret')
+
+        pg_session.add_user.assert_awaited_once_with(user)
+        assert user.password != 'old_hash'
+        redis_mock.drop_value.assert_awaited_once_with('reset:valid-token')
+
+    async def test_expired_token_raises(self, service, redis_mock):
+        redis_mock.get_value.return_value = None
+        with pytest.raises(exceptions.ResetTokenExpiredException):
+            await service.reset_password('bad-token', 'new_secret')
+
+    async def test_user_not_found_raises(self, service, pg_session, redis_mock):
+        redis_mock.get_value.return_value = str(uuid.uuid4())
+        pg_session.get_user_by_id.return_value = None
+        with pytest.raises(exceptions.UserNotFoundException):
+            await service.reset_password('token', 'new_secret')

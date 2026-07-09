@@ -74,6 +74,10 @@ export const authApi = {
       current_password: currentPassword,
       new_password: newPassword,
     }),
+  forgotPassword: email =>
+    api.post('/auth/api/v1/forgot-password', { email }),
+  resetPassword: (token, newPassword) =>
+    api.post('/auth/api/v1/reset-password', { token, new_password: newPassword }),
   // Admin
   listUsers:  () => api.get('/auth/api/v1/users'),
   getUser:    id => api.get(`/auth/api/v1/user/${id}`),

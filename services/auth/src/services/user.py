@@ -20,7 +20,7 @@ from src.api.v1.models.user import (
 from src.core.config import settings
 from src.dependences.postgres import PostgresDep, get_async_postgres
 from src.dependences.redis import RedisDep, get_async_redis
-from src.kafka.events import email_confirmation_requested_event
+from src.kafka.events import email_confirmation_requested_event, password_reset_requested_event
 from src.kafka.producer import get_kafka_producer
 from src.models.enums import Roles
 from src.models.user import User, UserRoles
@@ -157,6 +157,41 @@ class UserService:
                 roles=roles,
             ))
         return result
+
+    async def forgot_password(self, email: str) -> None:
+        """Инициирует сброс пароля: сохраняет токен в Redis и отправляет письмо через Kafka.
+        Возвращает без ошибки даже если email не найден (не раскрываем существование аккаунта)."""
+        user = await self.pg_session.get_user_by_email(email)
+        if user is None:
+            return
+
+        token = str(uuid.uuid4())
+        reset_ttl = 3600
+        await self.redis_session.set_value(f'reset:{token}', str(user.id), reset_ttl)
+
+        if self.kafka:
+            try:
+                await self.kafka.send_and_wait(
+                    MAIL_TOPIC,
+                    password_reset_requested_event(token, user.username, user.email),
+                )
+            except Exception:
+                logger.exception('Failed to send password_reset_requested event to Kafka')
+
+    async def reset_password(self, token: str, new_password: str) -> None:
+        """Сбрасывает пароль по токену из письма."""
+        raw = await self.redis_session.get_value(f'reset:{token}')
+        if raw is None:
+            raise exceptions.ResetTokenExpiredException
+
+        user = await self.pg_session.get_user_by_id(uuid.UUID(raw))
+        if user is None:
+            raise exceptions.UserNotFoundException
+
+        salt = bcrypt.gensalt()
+        user.password = bcrypt.hashpw(new_password.encode('utf-8'), salt).decode('utf-8')
+        await self.pg_session.add_user(user)
+        await self.redis_session.drop_value(f'reset:{token}')
 
     async def change_password(
         self, user_id: UUID, request: RequestChangePassword
