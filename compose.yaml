@@ -16,6 +16,8 @@ services:
         condition: service_healthy
       link-service:
         condition: service_healthy
+      ugc-service:
+        condition: service_healthy
       frontend:
         condition: service_started
 
@@ -267,6 +269,52 @@ services:
       retries: 5
       start_period: 10s
 
+  clickhouse:
+    container_name: clickhouse
+    image: clickhouse/clickhouse-server:24
+    networks:
+      - gallery-network
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    environment:
+      CLICKHOUSE_DB: ugc
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ''
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8123/ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  ugc-service:
+    container_name: ugc-service
+    build:
+      context: ./services/ugc
+    networks:
+      - gallery-network
+    environment:
+      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_PORT=8123
+      - CLICKHOUSE_DATABASE=ugc
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - AUTH_SERVICE_HOST=auth-service
+      - AUTH_SERVICE_PORT=8000
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:8000/ugc/api/v1/_healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 15s
+
 networks:
   gallery-network:
 
@@ -278,3 +326,4 @@ volumes:
   gallery-postgres-data:
   kafka-data:
   link-redis-data:
+  clickhouse-data:

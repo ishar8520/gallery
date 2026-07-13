@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "ugc-service"
+version = "0.1.0"
+description = "User Generated Content analytics service"
+authors = ["Ilya Sharov"]
+packages = [{ include = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+fastapi = "^0.115"
+uvicorn = {extras = ["standard"], version = "^0.30"}
+aiokafka = "^0.11"
+clickhouse-connect = "^0.8"
+httpx = "^0.27"
+pydantic-settings = "^2.0"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.6"
+pytest = "^8.0"
+pytest-asyncio = "^0.24"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
