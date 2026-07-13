@@ -1,7 +1,7 @@
 import uuid
 from collections.abc import AsyncGenerator
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import selectinload
@@ -97,14 +97,20 @@ class PostgresDep:
         user = result.scalar_one_or_none()
         return [ur.role.role for ur in user.user_roles]
 
-    async def get_all_users(self) -> list[User]:
+    async def get_all_users(self, limit: int = 20, offset: int = 0) -> list[User]:
         stmt = (
             select(User)
             .options(selectinload(User.user_roles).selectinload(UserRoles.role))
             .order_by(User.username)
+            .limit(limit)
+            .offset(offset)
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
+
+    async def get_users_count(self) -> int:
+        result = await self.session.execute(select(func.count()).select_from(User))
+        return result.scalar_one()
 
     async def get_role(self, role: Roles):
         stmt = (

@@ -79,7 +79,7 @@ export const authApi = {
   resetPassword: (token, newPassword) =>
     api.post('/auth/api/v1/reset-password', { token, new_password: newPassword }),
   // Admin
-  listUsers:  () => api.get('/auth/api/v1/users'),
+  listUsers:  (page = 1, size = 20) => api.get('/auth/api/v1/users', { params: { page, size } }),
   getUser:    id => api.get(`/auth/api/v1/user/${id}`),
   deleteUser: id => api.delete(`/auth/api/v1/user/${id}`),
   patchUser:  (id, data) => api.patch(`/auth/api/v1/user/${id}`, data),

@@ -33,3 +33,6 @@ class ConfirmationTokenExpiredException(Exception):
 
 class ResetTokenExpiredException(Exception):
     pass
+
+class RateLimitException(Exception):
+    pass

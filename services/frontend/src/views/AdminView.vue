@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import AppHeader from '../components/AppHeader.vue'
 import { authApi, ugcApi } from '../api/index.js'
 
@@ -7,6 +7,9 @@ import { authApi, ugcApi } from '../api/index.js'
 const users      = ref([])
 const loading    = ref(false)
 const error      = ref('')
+const page       = ref(1)
+const pageSize   = 20
+const total      = ref(0)
 
 const editUser   = ref(null)
 const editName   = ref('')
@@ -27,13 +30,21 @@ async function loadUsers() {
   loading.value = true
   error.value   = ''
   try {
-    const { data } = await authApi.listUsers()
-    users.value = data
+    const { data } = await authApi.listUsers(page.value, pageSize)
+    users.value = data.users
+    total.value = data.total
   } catch (e) {
     error.value = e.response?.data?.detail || 'Ошибка загрузки пользователей'
   } finally {
     loading.value = false
   }
+}
+
+const totalPages = computed(() => Math.ceil(total.value / pageSize))
+
+async function goToPage(p) {
+  page.value = p
+  await loadUsers()
 }
 
 async function loadStats() {
@@ -204,6 +215,13 @@ async function toggleAdmin(user) {
               </tbody>
             </table>
           </div>
+
+          <!-- Pagination -->
+          <div v-if="totalPages > 1" class="pagination">
+            <button class="btn btn-ghost btn-sm" :disabled="page === 1" @click="goToPage(page - 1)">← Назад</button>
+            <span class="page-info">{{ page }} / {{ totalPages }}</span>
+            <button class="btn btn-ghost btn-sm" :disabled="page === totalPages" @click="goToPage(page + 1)">Вперёд →</button>
+          </div>
         </template>
 
         <!-- ── Stats tab ─────────────────────────────────────────────────── -->
@@ -352,6 +370,17 @@ async function toggleAdmin(user) {
 .admin-user-name { font-weight: 500; }
 .admin-user-id   { font-family: monospace; font-size: 11px; color: var(--text-muted); margin-top: 2px; }
 .admin-actions   { display: flex; gap: 4px; }
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  border-top: 1px solid var(--border);
+}
+.page-info { font-size: 13px; color: var(--text-muted); }
 
 /* Stats */
 .stats-grid {

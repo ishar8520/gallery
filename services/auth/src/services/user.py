@@ -16,6 +16,7 @@ from src.api.v1.models.user import (
     RequestPatchUser,
     ResponseUser,
     ResponseUserAdmin,
+    ResponseUsersPage,
 )
 from src.core.config import settings
 from src.dependences.postgres import PostgresDep, get_async_postgres
@@ -144,19 +145,22 @@ class UserService:
             user.email = user_update.email
         return await self.pg_session.add_user(user)
 
-    async def get_all_users(self) -> list[ResponseUserAdmin]:
+    async def get_all_users(self, page: int = 1, size: int = 20) -> ResponseUsersPage:
         """Получение списка всех пользователей с ролями (только для ADMIN)"""
-        users = await self.pg_session.get_all_users()
-        result = []
-        for user in users:
-            roles = [ur.role.role.value for ur in user.user_roles]
-            result.append(ResponseUserAdmin(
+        limit = size
+        offset = (page - 1) * size
+        users = await self.pg_session.get_all_users(limit=limit, offset=offset)
+        total = await self.pg_session.get_users_count()
+        items = [
+            ResponseUserAdmin(
                 user_id=user.id,
                 username=user.username,
                 email=user.email,
-                roles=roles,
-            ))
-        return result
+                roles=[ur.role.role.value for ur in user.user_roles],
+            )
+            for user in users
+        ]
+        return ResponseUsersPage(users=items, total=total, page=page, size=size)
 
     async def forgot_password(self, email: str) -> None:
         """Инициирует сброс пароля: сохраняет токен в Redis и отправляет письмо через Kafka.

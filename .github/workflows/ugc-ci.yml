@@ -1,0 +1,47 @@
+name: UGC Service CI
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'services/ugc/**'
+      - '.github/workflows/ugc-ci.yml'
+  push:
+    branches: ['feature/**', 'fix/**', 'infra/**']
+    paths:
+      - 'services/ugc/**'
+      - '.github/workflows/ugc-ci.yml'
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/ugc
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install poetry
+        run: pip install "poetry>=2.0,<3.0"
+
+      - name: Install dependencies
+        run: poetry install --with dev
+
+      - name: Lint with ruff
+        run: poetry run ruff check .
+
+      - name: Run tests
+        run: poetry run pytest
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: lint-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build ugc-service image
+        run: docker build -t ugc-service:ci services/ugc

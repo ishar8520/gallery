@@ -36,6 +36,7 @@ class OAuthUserInfo:
     id: uuid.UUID
     username: str
     email: str
+    new_provider_linked: bool = False
 
 
 class OAuthService:
@@ -110,7 +111,9 @@ class OAuthService:
         user = await self.pg.get_user_by_email(email)
         if user:
             # Извлекаем значения ДО commit в add_oauth_account, который экспирирует user
-            info = OAuthUserInfo(id=user.id, username=user.username, email=user.email)
+            info = OAuthUserInfo(
+                id=user.id, username=user.username, email=user.email, new_provider_linked=True
+            )
             await self.pg.add_oauth_account(OAuthAccount(
                 user_id=info.id,
                 provider=provider,

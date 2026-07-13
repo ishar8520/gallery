@@ -19,7 +19,9 @@ async function submit() {
     await auth.onLogin(data.access_token)
     router.push('/gallery')
   } catch (e) {
-    error.value = e.response?.data?.detail || 'Ошибка входа'
+    error.value = e.response?.status === 429
+      ? e.response.data?.detail || 'Слишком много попыток. Попробуйте через 15 минут.'
+      : e.response?.data?.detail || 'Ошибка входа'
   } finally {
     loading.value = false
   }

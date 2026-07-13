@@ -70,3 +70,21 @@ class MailService:
             port=settings.smtp.port,
         )
         logger.info('Password reset email sent to %s', to)
+
+    async def send_new_oauth_login_email(self, to: str, username: str, provider: str) -> None:
+        provider_name = {'google': 'Google', 'github': 'GitHub'}.get(provider, provider.capitalize())
+        body = (
+            f'Привет, {username}!\n\n'
+            f'К вашему аккаунту Gallery был привязан вход через {provider_name}.\n\n'
+            f'Если это были не вы — смените пароль и обратитесь в поддержку.'
+        )
+        message = MIMEText(body, 'plain', 'utf-8')
+        message['From'] = settings.smtp.from_email
+        message['To'] = to
+        message['Subject'] = f'Привязан вход через {provider_name} — Gallery'
+        await aiosmtplib.send(
+            message,
+            hostname=settings.smtp.host,
+            port=settings.smtp.port,
+        )
+        logger.info('New OAuth login email sent to %s (provider=%s)', to, provider)

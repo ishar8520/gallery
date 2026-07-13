@@ -27,5 +27,12 @@ class RedisDep:
         """SET key value EX expires NX — атомарно, только если ключ не существует."""
         return self.session.set(key, value, ex=expires, nx=True)
 
+    async def incr(self, key: str, expires: int) -> int:
+        """INCR key; устанавливает TTL при первом инкременте."""
+        count = await self.session.incr(key)
+        if count == 1:
+            await self.session.expire(key, expires)
+        return count
+
 async def get_async_redis() -> RedisDep:
     return RedisDep()
