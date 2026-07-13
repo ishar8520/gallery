@@ -56,6 +56,14 @@ class GoogleOAuthConfig(BaseSettings):
     redirect_uri: str = 'http://localhost:8000/auth/api/v1/oauth/google/callback'
 
 
+class GitHubOAuthConfig(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix='github_')
+
+    client_id: str = ''
+    client_secret: str = ''
+    redirect_uri: str = 'http://localhost:8000/auth/api/v1/oauth/github/callback'
+
+
 class AppConfig(BaseSettings):
     model_config = SettingsConfigDict(env_prefix='app_')
 
@@ -69,6 +77,7 @@ class Settings(BaseSettings):
     kafka: KafkaConfig = KafkaConfig()
     registration: RegistrationConfig = RegistrationConfig()
     google: GoogleOAuthConfig = GoogleOAuthConfig()
+    github: GitHubOAuthConfig = GitHubOAuthConfig()
     app: AppConfig = AppConfig()
 
 

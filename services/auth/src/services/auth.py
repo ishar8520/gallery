@@ -69,6 +69,8 @@ class AuthService:
         """Обновление JWT-access"""
         user_id = await self.jwt.get_jwt_subject()
         user = await self.pg_session.get_user_by_id(user_id)
+        if not user:
+            raise exceptions.UserNotFoundException
         roles = await self.pg_session.get_user_roles(user.id)
         claim = {'email': user.email,
                 'username': user.username,
