@@ -26,6 +26,13 @@ class RequestChangePassword(BaseModel):
     new_password: str
 
 
+class ResponseUsersPage(BaseModel):
+    users: list[ResponseUserAdmin]
+    total: int
+    page: int
+    size: int
+
+
 class RequestForgotPassword(BaseModel):
     email: str
 

@@ -21,6 +21,9 @@ logger = logging.getLogger(__name__)
 
 UGC_TOPIC = 'ugc-events'
 
+MAX_LOGIN_ATTEMPTS = 5
+LOGIN_BLOCK_TTL = 900  # 15 минут
+
 auth_jwt_dep = AuthJWTBearer()
 
 
@@ -49,11 +52,20 @@ class AuthService:
 
     async def get_login(self, request_model: RequestLogin) -> ResponseLogin:
         """Аутентификация пользователя"""
+        fail_key = f'login:fail:{request_model.username}'
+
+        count = await self.redis_session.get_value(fail_key)
+        if count and int(count) >= MAX_LOGIN_ATTEMPTS:
+            raise exceptions.RateLimitException
+
         user = await self.pg_session.get_user_by_username(request_model.username)
         if not user or not user.password or not bcrypt.checkpw(
             request_model.password.encode('utf-8'), user.password.encode('utf-8')
         ):
+            await self.redis_session.incr(fail_key, LOGIN_BLOCK_TTL)
             raise exceptions.BadCredsException
+
+        await self.redis_session.drop_value(fail_key)
         roles = await self.pg_session.get_user_roles(user.id)
         claim = {'email': user.email,
                 'username': user.username,

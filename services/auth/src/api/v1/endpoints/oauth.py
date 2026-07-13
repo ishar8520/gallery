@@ -10,7 +10,7 @@ from fastapi.responses import RedirectResponse
 from src.core.config import settings
 from src.dependences.postgres import PostgresDep, get_async_postgres
 from src.dependences.redis import RedisDep, get_async_redis
-from src.kafka.events import user_logged_in_event
+from src.kafka.events import new_oauth_login_event, user_logged_in_event
 from src.kafka.producer import get_kafka_producer
 from src.services import exceptions
 from src.services.oauth import OAuthService, OAuthUserInfo, get_oauth_service
@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 UGC_TOPIC = 'ugc-events'
+MAIL_TOPIC = 'mail-events'
 
 
 def _error_redirect(message: str) -> RedirectResponse:
@@ -57,6 +58,14 @@ async def _issue_tokens_and_redirect(
             await kafka.send_and_wait(UGC_TOPIC, user_logged_in_event(str(user.id), provider))
         except Exception:
             logger.exception('Failed to publish user_logged_in event')
+        if user.new_provider_linked:
+            try:
+                await kafka.send_and_wait(
+                    MAIL_TOPIC,
+                    new_oauth_login_event(str(user.id), user.email, user.username, provider),
+                )
+            except Exception:
+                logger.exception('Failed to publish new_oauth_login event')
 
     redirect_url = f'{settings.app.frontend_url}/oauth-callback?access_token={access_token}'
     response = RedirectResponse(redirect_url)

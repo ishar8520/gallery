@@ -27,6 +27,13 @@ async def handle_event(event: dict, mail_service: MailService) -> None:
             username=payload['username'],
             token=payload['token'],
         )
+    elif event_type == 'new_oauth_login':
+        payload = event['payload']
+        await mail_service.send_new_oauth_login_email(
+            to=payload['email'],
+            username=payload['username'],
+            provider=payload['provider'],
+        )
     else:
         logger.warning('Unknown event type: %s', event_type)
 
