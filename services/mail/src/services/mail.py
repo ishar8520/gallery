@@ -72,7 +72,7 @@ class MailService:
         logger.info('Password reset email sent to %s', to)
 
     async def send_new_oauth_login_email(self, to: str, username: str, provider: str) -> None:
-        provider_name = {'google': 'Google', 'github': 'GitHub'}.get(provider, provider.capitalize())
+        provider_name = {'google': 'Google','github': 'GitHub'}.get(provider, provider.capitalize())
         body = (
             f'Привет, {username}!\n\n'
             f'К вашему аккаунту Gallery был привязан вход через {provider_name}.\n\n'
