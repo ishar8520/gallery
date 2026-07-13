@@ -11,12 +11,13 @@ Browser / Mobile
    [nginx]  ← единая точка входа, роутит по prefix
        ├── /auth    →  auth-service  (PostgreSQL + Redis)
        ├── /api     →  gallery-service  (PostgreSQL metadata + MinIO files)
+       ├── /ugc     →  ugc-service  (ClickHouse analytics)
        ├── /minio/  →  minio:9000  (presigned URL proxy, Host: minio:9000)
        └── /        →  frontend-service
 
 Kafka ──────── async шина событий
   ├── topic: mail-events  ← auth → mail-service
-  └── topic: ugc-events   ← gallery → ugc-service  (не начат)
+  └── topic: ugc-events   ← auth + gallery → ugc-service
 
 Loki + Grafana ← structured logs от всех сервисов  (не начат)
 ```
@@ -29,14 +30,15 @@ Loki + Grafana ← structured logs от всех сервисов  (не нач�
 | gallery | `services/gallery` | FastAPI, SQLAlchemy async, PostgreSQL, MinIO | ✅ разобран, тесты, CI |
 | nginx | `services/nginx` | nginx 1.27-alpine, reverse proxy | ✅ образ заменён, MinIO proxy добавлен |
 | minio | `services/minio` | minio/minio, S3-совместимое хранилище | ✅ образ заменён |
-| mail | `services/mail` | FastAPI, aiokafka consumer, aiosmtplib | 🔄 email-подтверждение готово, сброс пароля в работе |
-| frontend | `services/frontend` | Vue 3, Vite, Pinia, Vue Router, Axios | ✅ реализован |
+| mail | `services/mail` | FastAPI, aiokafka consumer, aiosmtplib | ✅ email-подтверждение, сброс пароля |
+| frontend | `services/frontend` | Vue 3, Vite, Pinia, Vue Router, Axios | ✅ реализован, OAuth, сброс пароля |
 | Kafka | — | Apache Kafka 3.9 (KRaft) | ✅ работает в compose |
-| ugc | — | FastAPI или воркер, ClickHouse или PostgreSQL | не начат |
+| ugc | `services/ugc` | FastAPI, aiokafka consumer, clickhouse-connect | ✅ реализован |
+| ClickHouse | — | clickhouse/clickhouse-server:24 | ✅ в compose |
 | Loki | — | Grafana Loki + Promtail + Grafana | не начат |
 
 **Порядок разработки:** auth ✅ → gallery ✅ → nginx ✅ → Kafka ✅ → frontend ✅ →
-mail (email-confirm ✅, reset-password 🔄) → ugc → Loki.
+mail ✅ → ugc ✅ → Loki.
 
 ## Ключевые продуктовые решения (зафиксированы)
 

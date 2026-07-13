@@ -104,3 +104,12 @@ export const albumsApi = {
   rename: (id, name)   => api.put(`/api/v1/albums/${id}`, { name }),
   delete: id           => api.delete(`/api/v1/albums/${id}`),
 }
+
+// UGC — analytics
+export const ugcApi = {
+  trackClick: (page, element) =>
+    api.post('/ugc/api/v1/events/click', { page, element }).catch(() => {}),
+  statsPhotos: () => api.get('/ugc/api/v1/stats/photos'),
+  statsAuth:   () => api.get('/ugc/api/v1/stats/auth'),
+  statsClicks: () => api.get('/ugc/api/v1/stats/clicks'),
+}

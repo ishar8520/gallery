@@ -2,6 +2,7 @@ import logging
 from typing import Annotated
 from urllib.parse import quote
 
+from aiokafka import AIOKafkaProducer
 from async_fastapi_jwt_auth import AuthJWT
 from fastapi import APIRouter, Depends
 from fastapi.responses import RedirectResponse
@@ -9,11 +10,15 @@ from fastapi.responses import RedirectResponse
 from src.core.config import settings
 from src.dependences.postgres import PostgresDep, get_async_postgres
 from src.dependences.redis import RedisDep, get_async_redis
+from src.kafka.events import user_logged_in_event
+from src.kafka.producer import get_kafka_producer
 from src.services import exceptions
 from src.services.oauth import OAuthService, OAuthUserInfo, get_oauth_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+UGC_TOPIC = 'ugc-events'
 
 
 def _error_redirect(message: str) -> RedirectResponse:
@@ -27,6 +32,8 @@ async def _issue_tokens_and_redirect(
     auth: AuthJWT,
     redis: RedisDep,
     pg: PostgresDep,
+    kafka: AIOKafkaProducer,
+    provider: str,
 ) -> RedirectResponse:
     roles = await pg.get_user_roles(user.id)
     claim = {
@@ -44,6 +51,12 @@ async def _issue_tokens_and_redirect(
     await redis.set_value(
         f'token:refresh:{user.id}', refresh_token, int(settings.jwt.refresh_expires_seconds)
     )
+
+    if kafka:
+        try:
+            await kafka.send_and_wait(UGC_TOPIC, user_logged_in_event(str(user.id), provider))
+        except Exception:
+            logger.exception('Failed to publish user_logged_in event')
 
     redirect_url = f'{settings.app.frontend_url}/oauth-callback?access_token={access_token}'
     response = RedirectResponse(redirect_url)
@@ -68,10 +81,11 @@ async def github_callback(
     auth: Annotated[AuthJWT, Depends(AuthJWT)],
     redis: Annotated[RedisDep, Depends(get_async_redis)],
     pg: Annotated[PostgresDep, Depends(get_async_postgres)],
+    kafka: Annotated[AIOKafkaProducer, Depends(get_kafka_producer)],
 ):
     try:
         user = await oauth.handle_github_callback(code, state)
-        return await _issue_tokens_and_redirect(user, auth, redis, pg)
+        return await _issue_tokens_and_redirect(user, auth, redis, pg, kafka, 'github')
     except exceptions.BadCredsException:
         return _error_redirect('Недействительная ссылка авторизации. Попробуйте снова.')
     except Exception:
@@ -95,10 +109,11 @@ async def google_callback(
     auth: Annotated[AuthJWT, Depends(AuthJWT)],
     redis: Annotated[RedisDep, Depends(get_async_redis)],
     pg: Annotated[PostgresDep, Depends(get_async_postgres)],
+    kafka: Annotated[AIOKafkaProducer, Depends(get_kafka_producer)],
 ):
     try:
         user = await oauth.handle_google_callback(code, state)
-        return await _issue_tokens_and_redirect(user, auth, redis, pg)
+        return await _issue_tokens_and_redirect(user, auth, redis, pg, kafka, 'google')
     except exceptions.BadCredsException:
         return _error_redirect('Недействительная ссылка авторизации. Попробуйте снова.')
     except Exception:
