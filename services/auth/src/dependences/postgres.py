@@ -8,7 +8,7 @@ from sqlalchemy.orm import selectinload
 
 from src.core.config import settings
 from src.models.enums import Roles
-from src.models.user import Role, User, UserRoles
+from src.models.user import OAuthAccount, Role, User, UserRoles
 
 engine = create_async_engine(settings.postgres.url)
 async_session_maker = async_sessionmaker(bind=engine, class_=AsyncSession)
@@ -113,6 +113,24 @@ class PostgresDep:
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
+
+
+    async def get_oauth_account(self, provider: str, provider_user_id: str):
+        stmt = (
+            select(OAuthAccount)
+            .where(OAuthAccount.provider == provider)
+            .where(OAuthAccount.provider_user_id == provider_user_id)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def add_oauth_account(self, account: OAuthAccount) -> None:
+        try:
+            self.session.add(account)
+            await self.session.commit()
+        except SQLAlchemyError:
+            await self.session.rollback()
+            raise
 
 
 async def get_async_postgres() -> AsyncGenerator[PostgresDep]:

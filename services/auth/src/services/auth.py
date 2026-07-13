@@ -34,8 +34,9 @@ class AuthService:
     async def get_login(self, request_model: RequestLogin) -> ResponseLogin:
         """Аутентификация пользователя"""
         user = await self.pg_session.get_user_by_username(request_model.username)
-        if not user or not bcrypt.checkpw(request_model.password.encode('utf-8'),
-                                          user.password.encode('utf-8')):
+        if not user or not user.password or not bcrypt.checkpw(
+            request_model.password.encode('utf-8'), user.password.encode('utf-8')
+        ):
             raise exceptions.BadCredsException
         roles = await self.pg_session.get_user_roles(user.id)
         claim = {'email': user.email,

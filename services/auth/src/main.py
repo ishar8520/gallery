@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from src.api.v1.endpoints import auth, confirm, password_reset, registration, role, user
+from src.api.v1.endpoints import auth, confirm, oauth, password_reset, registration, role, user
 from src.core.config import settings
 from src.kafka.producer import create_producer
 
@@ -44,3 +44,4 @@ app.include_router(confirm.router, prefix=f'{base_url_prefix_api}', tags=['user'
 app.include_router(user.router, prefix=f'{base_url_prefix_api}', tags=['user'])
 app.include_router(role.router, prefix=f'{base_url_prefix_api}', tags=['role'])
 app.include_router(password_reset.router, prefix=f'{base_url_prefix_api}', tags=['user'])
+app.include_router(oauth.router, prefix=f'{base_url_prefix_api}', tags=['oauth'])
