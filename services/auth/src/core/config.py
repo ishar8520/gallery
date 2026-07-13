@@ -48,12 +48,37 @@ class RegistrationConfig(BaseSettings):
     ttl_seconds: int = 86400
 
 
+class GoogleOAuthConfig(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix='google_')
+
+    client_id: str = ''
+    client_secret: str = ''
+    redirect_uri: str = 'http://localhost:8000/auth/api/v1/oauth/google/callback'
+
+
+class GitHubOAuthConfig(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix='github_')
+
+    client_id: str = ''
+    client_secret: str = ''
+    redirect_uri: str = 'http://localhost:8000/auth/api/v1/oauth/github/callback'
+
+
+class AppConfig(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix='app_')
+
+    frontend_url: str = 'http://localhost:8000'
+
+
 class Settings(BaseSettings):
     postgres: PostgresConfig = PostgresConfig()
     redis: RedisConfig = RedisConfig()
     jwt: JWTConfig = JWTConfig()
     kafka: KafkaConfig = KafkaConfig()
     registration: RegistrationConfig = RegistrationConfig()
+    google: GoogleOAuthConfig = GoogleOAuthConfig()
+    github: GitHubOAuthConfig = GitHubOAuthConfig()
+    app: AppConfig = AppConfig()
 
 
 settings = Settings()

@@ -49,6 +49,29 @@ body {
 
 .btn-danger   { background: var(--danger);   color: #fff; }
 .btn-danger:hover:not(:disabled)   { background: var(--danger-hover); }
+.btn-google {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 10px 16px; border-radius: var(--radius);
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  font-size: 14px; font-weight: 500; text-decoration: none; cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.btn-google:hover { background: #2a3a4a; border-color: #45A29E; }
+.btn-github {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; padding: 10px 16px; border-radius: var(--radius);
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  font-size: 14px; font-weight: 500; text-decoration: none; cursor: pointer;
+  transition: background .15s, border-color .15s; margin-bottom: 8px;
+}
+.btn-github:hover { background: #2a3a4a; border-color: #6e5494; }
+.auth-divider {
+  display: flex; align-items: center; gap: 12px;
+  color: var(--text-muted); font-size: 12px; margin: 16px 0;
+}
+.auth-divider::before, .auth-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
 
 .btn-sm { padding: 5px 10px; font-size: 12px; }
 

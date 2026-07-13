@@ -34,7 +34,7 @@ class User(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     username: Mapped[str] = mapped_column(String, unique=True)
-    password: Mapped[str] = mapped_column(String)
+    password: Mapped[str | None] = mapped_column(String, nullable=True)
     email: Mapped[str] = mapped_column(String, unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
                                                  default=lambda: datetime.now(UTC))
@@ -72,3 +72,15 @@ class UserRoles(Base):
                                                  onupdate=lambda: datetime.now(UTC))
     user: Mapped['User'] = relationship(back_populates='user_roles')
     role: Mapped['Role'] = relationship(back_populates='user_roles')
+
+
+class OAuthAccount(Base):
+    __tablename__ = 'oauth_accounts'
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey('auth.users.id', ondelete='CASCADE'))
+    provider: Mapped[str] = mapped_column(String)
+    provider_user_id: Mapped[str] = mapped_column(String)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True),
+                                                 default=lambda: datetime.now(UTC))
